@@ -28,6 +28,7 @@ class Country:
 
     def __init__(self, country=None):
         if country is None:
+            # Default values (Austria)
             self.country_id = 14
             self.idalpha3 = "AUT"
             self.idalpha2 = "AT"
@@ -38,6 +39,6 @@ class Country:
             self.country_id = self.countryToId.get(country)
             self.idalpha3 = self.countryToIdalpha3.get(country)
             self.idalpha2 = self.countryToIdalpha2.get(country)
-            self.tiene_edos = 1
+            self.tiene_edos = 1  # Default value, not set in Java constructor
             self.id_pais = self.countryToId.get(country)
             self.cad_nombre_es = country
