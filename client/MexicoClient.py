@@ -10,11 +10,11 @@ from email.mime.text import MIMEText
 from email.mime.application import MIMEApplication
 import smtplib
 
-from entities.Country import Country
-from entities.State import State
+from ..entities.Country import Country
+from ..entities.State import State
 
-from utils.Utils import Utils
-from utils.Recaptcha import Recaptcha
+from ..utils.Utils import Utils
+from ..utils.Recaptcha import Recaptcha
 
 
 class MexicoClient:

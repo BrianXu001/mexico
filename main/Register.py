@@ -6,10 +6,10 @@ import base64
 import random
 import requests
 
-from utils.Utils import Utils
-from utils.Recaptcha import Recaptcha
-from utils.HttpUtils import HttpUtils
-from utils import obtain_email_link_from_hotmail
+from ..utils.Utils import Utils
+from ..utils.Recaptcha import Recaptcha
+from ..utils.HttpUtils import HttpUtils
+from ..utils import obtain_email_link_from_hotmail
 
 
 class Register:

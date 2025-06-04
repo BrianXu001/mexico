@@ -1,8 +1,8 @@
-from entities.Country import Country
-from entities.State import State
-from entities.Office import Office
-from entities.Formalities import Formalities
-from entities.EmergencyPerson import EmergencyPerson
+from ..entities.Country import Country
+from ..entities.State import State
+from ..entities.Office import Office
+from ..entities.Formalities import Formalities
+from ..entities.EmergencyPerson import EmergencyPerson
 import json
 from datetime import datetime
 
