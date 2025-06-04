@@ -10,8 +10,11 @@ from email.mime.text import MIMEText
 from email.mime.application import MIMEApplication
 import smtplib
 
-from entities import Country
-from entities import State
+from entities.Country import Country
+from entities.State import State
+
+from utils.Utils import Utils
+from utils.Recaptcha import Recaptcha
 
 
 class MexicoClient:
@@ -123,16 +126,6 @@ class MexicoClient:
         headers["authorization"] = f"Bearer {self.citas_token}"
         return headers
 
-    def encrypt(self, text: str) -> str:
-        # Implement your encryption logic here
-        # This is a placeholder - replace with actual encryption
-        return text
-
-    def decrypt(self, text: str) -> str:
-        # Implement your decryption logic here
-        # This is a placeholder - replace with actual decryption
-        return text
-
     def generate_recaptcha_url(self, user_name: str) -> str:
         try:
             text_bytes = user_name.encode('utf-8')
@@ -142,8 +135,9 @@ class MexicoClient:
             print(f"Error generating recaptcha URL: {e}")
             return ""
 
-    def generate_recaptcha_pic(self, user_name: str, pic_path: str) -> None:
+    def get_recaptcha_code(self, user_name: str) -> str:
         get_captcha_url = self.generate_recaptcha_url(user_name)
+        print("get_captcha_url:", get_captcha_url)
         headers = {
             "accept": "application/json",
             "accept-c": "true",
@@ -158,7 +152,7 @@ class MexicoClient:
             "sec-fetch-dest": "empty",
             "sec-fetch-mode": "cors",
             "sec-fetch-site": "same-site",
-            "user-agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/137.0.0.0 Safari/537.36",
+            "user-agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/136.0.0.0 Safari/537.36",
             "x-csrf-token": "",
             "x-requested-with": "XMLHttpRequest",
             "x-sre-api-key": "i3sid7ZQVsp0BPPC8yrdWqby5XZiRcu9"
@@ -168,27 +162,24 @@ class MexicoClient:
         if response.status_code == 200:
             try:
                 content = response.text
-                decrypted_content = self.decrypt(content)
+                decrypted_content = Utils.crypto_js_decrypt(content, self.key)
                 data = json.loads(decrypted_content)
                 img_data = data.get("img", "")[22:]  # Remove the data:image/png;base64, prefix
-                with open(pic_path, "wb") as f:
-                    f.write(base64.b64decode(img_data))
+                return Recaptcha.recognize(img_data)
+
             except Exception as e:
                 print(f"Error generating recaptcha pic: {e}")
+                return ""
         else:
             print(f"Failed to get recaptcha image: {response.status_code}")
-
-    def get_recaptcha_code(self, user_name: str) -> str:
-        recaptcha_pic_path = "recaptcha_pic.png"
-        self.generate_recaptcha_pic(user_name, recaptcha_pic_path)
-        # Implement your recaptcha recognition logic here
-        return "recognized_code"  # Placeholder
+            return ""
 
     def login_with_recaptcha_with_error_code(self) -> int:
         print("======login======")
         try:
             print(f"username: {self.user_id} password: {self.password}")
             recaptcha_code = self.get_recaptcha_code(self.user_id)
+            print("recaptcha_code:", recaptcha_code)
             user_info = {
                 "email": self.user_id,
                 "password": self.password,
@@ -199,7 +190,7 @@ class MexicoClient:
                 "atuh_login": True,
                 "captcha": recaptcha_code
             }
-            user_info_enc = self.encrypt(json.dumps(user_info))
+            user_info_enc = Utils.crypto_js_encrypt(json.dumps(user_info), self.key)
             params = {"encrypt": user_info_enc}
 
             response = requests.post(
@@ -213,7 +204,7 @@ class MexicoClient:
                 print("empty response!")
                 return 100
 
-            decrypted_content = self.decrypt(response_content)
+            decrypted_content = Utils.crypto_js_decrypt(response_content, self.key)
             if not decrypted_content:
                 print("empty response!")
                 return 100
@@ -256,7 +247,7 @@ class MexicoClient:
 
     def save_data1(self) -> bool:
         try:
-            request_info = self.encrypt(json.dumps(self.get_save_data_request1()))
+            request_info = Utils.crypto_js_encrypt(json.dumps(self.get_save_data_request1()), self.key)
             params = {"encrypt": request_info}
 
             response = requests.post(
@@ -266,7 +257,7 @@ class MexicoClient:
             )
 
             response_content = response.text
-            decrypted_content = self.decrypt(response_content)
+            decrypted_content = Utils.crypto_js_decrypt(response_content, self.key)
             print(f"save1_response: {decrypted_content}")
 
             if not decrypted_content:
@@ -553,7 +544,7 @@ class MexicoClient:
 
     def get_office_config_data1(self, office_id: int) -> Dict:
         url = "https://citasapi.sre.gob.mx/api/console/office-preferences"
-        request_info = self.encrypt(json.dumps(self.gen_office_info(office_id)))
+        request_info = Utils.crypto_js_encrypt(json.dumps(self.gen_office_info(office_id)), self.key)
         params = {"encrypt": request_info}
 
         response = requests.post(
@@ -563,7 +554,7 @@ class MexicoClient:
         )
 
         response_content = response.text
-        decrypted_content = self.decrypt(response_content)
+        decrypted_content = Utils.crypto_js_decrypt(response_content, self.key)
         response_json = json.loads(decrypted_content)
         print(f"getOfficePreference: {response_json}")
         return response_json.get("office_preferences", {})
@@ -579,7 +570,7 @@ class MexicoClient:
 
     def get_general_response(self, office_id: int, thread_info: str) -> Dict:
         try:
-            request_info = self.encrypt(json.dumps(self.gen_general_info(office_id)))
+            request_info = Utils.crypto_js_encrypt(json.dumps(self.gen_general_info(office_id)), self.key)
             params = {"encrypt": request_info}
 
             response = requests.post(
@@ -589,7 +580,7 @@ class MexicoClient:
             )
 
             response_content = response.text
-            decrypted_content = self.decrypt(response_content)
+            decrypted_content = Utils.crypto_js_decrypt(response_content, self.key)
             return json.loads(decrypted_content)
         except Exception as e:
             print(f"{thread_info}{datetime.now().strftime('%Y-%m-%d %H:%M:%S:%f')}getGeneralResponse error==> {e}")
@@ -657,3 +648,11 @@ class MexicoClient:
                 self.send_email_count += 1
             except Exception as e:
                 print(f"Error sending email with attachment: {e}")
+
+
+if __name__ == "__main__":
+    # {"email":"ambfvcqhs8@hotmail.com","email_pwd":"mbc599534","password":"mbc5995341@Gmail"}
+    # {"email":"aqnfe63@hotmail.com","email_pwd":"kyh478984","password":"kyh4789841@Gmail"}
+    # {"email":"exwpchxjho4@hotmail.com","email_pwd":"gsy184641","password":"gsy1846411@Gmail"}
+    client = MexicoClient(user_id="exwpchxjho4@hotmail.com", password="gsy1846411@Gmail")
+    client.login_with_recaptcha_with_error_code()

@@ -11,7 +11,6 @@ urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 
 class HttpUtils:
-
     @staticmethod
     def do_get(url, headers=None):
         session = requests.Session()
@@ -46,17 +45,6 @@ class HttpUtils:
             return None
 
     @staticmethod
-    def upload(url, headers=None, file_path=None):
-        try:
-            with open(file_path, 'rb') as f:
-                files = {'pic': f}
-                response = requests.post(url, headers=headers, files=files, verify=False)
-                return response
-        except Exception as e:
-            print(f"upload error ==> {e}")
-            return None
-
-    @staticmethod
     def get_content(response):
         if response is None:
             return ""
@@ -69,20 +57,3 @@ class HttpUtils:
             print(f"get_content error ==> {e}")
             return ""
 
-    @staticmethod
-    def get_response_headers(response):
-        return response.headers if response else None
-
-    @staticmethod
-    def get_response_cookies(response):
-        return response.cookies if response else None
-
-    @staticmethod
-    def set_cookie_to_string(cookies):
-        if not cookies:
-            return None
-        return '; '.join([f"{name}={value}" for name, value in cookies.items()])
-
-    @staticmethod
-    def get_string_from_response(response):
-        return response.text if response else ""

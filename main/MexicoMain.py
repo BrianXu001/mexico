@@ -16,7 +16,7 @@ from email.mime.multipart import MIMEMultipart
 import subprocess
 import re
 
-from client import MexicoClient
+from client.MexicoClient import MexicoClient
 
 
 class MexicoMain:
@@ -404,18 +404,20 @@ class MexicoMain:
             r.delete(f"{email}_checking_visas")
 
     @staticmethod
-    def register_and_read_eyj_together_hotmail(args: List[str]):
-        pattern = "book"  # or "check"
+    def register_and_read_eyj_together_hotmail():
+        # String pattern = args[0];  # check or book
+        pattern = "book"
 
         # Connect to Redis
-        r = redis.Redis(
+        redis_conn = redis.Redis(
             host='47.254.14.124',
             port=6379,
             db=0,
-            password='2023@mexico'
+            password='2023@mexico',
+            decode_responses=True
         )
 
-        # Set Redis keys based on pattern
+        # Initialize Redis keys based on pattern
         if pattern == "check":
             hotmail_account_raw = "0_raw_hotmail_account_check"
             register_request_signal = "0_register_request_signal_check_hotmail"
@@ -430,9 +432,9 @@ class MexicoMain:
         while True:
             # Wait for register signal
             while True:
-                register_signal = r.lpop(register_request_signal)
+                register_signal = redis_conn.lpop(register_request_signal)
                 if not register_signal:
-                    print(f"check register request signal! [{register_request_signal}]")
+                    print(f"check register request signal![{register_request_signal}]")
                     time.sleep(3)
                 else:
                     print("find register signal!!")
@@ -440,51 +442,49 @@ class MexicoMain:
 
             # Process accounts
             while True:
-                account_raw = r.lpop(hotmail_account_raw)
+                account_raw = redis_conn.lpop(hotmail_account_raw)
                 if not account_raw:
-                    print(f"Can not find gmail account! [{hotmail_account_raw}]")
+                    print(f"Can not find gmail account![{hotmail_account_raw}]")
                     time.sleep(3)
                     continue
 
-                print(f"find gmail account: {account_raw}")
+                print(f"find gmail account:{account_raw}")
                 account_info_raw = json.loads(account_raw)
                 email = account_info_raw["email"]
                 email_pwd = account_info_raw["email_pwd"]
-                password = f"{email_pwd}1@Gmail"
+                password = email_pwd + "1@Gmail"
 
-                print(f"注册=={email}==")
-                error_code = MexicoClient().register_with_err_code(
-                    "TESTNAME", "TESTFIRST", email, password,
-                    246, 329198, "@hotmail.com", "@hotmail"
-                )
+                # Register
+                print(f"注册=={email}==" + datetime.now().strftime("%Y-%m-%d %H:%M:%S:%f")[:-3])
+                error_code = register(email, password)
 
                 if error_code == 2:
                     print("register failed, select new account!")
                     time.sleep(10)
                     continue
 
-                # Get activation link from email
-                eyj_and_token = Test.read_hotmail_link_local(email, email_pwd)
-                if not eyj_and_token.get("eyj"):
+                # Read EYJ from browser
+                eyj_and_token = read_hotmail_link_local(email, email_pwd)
+                if not eyj_and_token or not eyj_and_token.get("eyj"):
                     print("Can not find eyj or failed to register, change account!")
                     continue
 
-                print(f"激活=={email}==")
-                if MexicoMain.motivate_gmail_by_eyJ_and_token(
-                        eyj_and_token["eyj"],
-                        eyj_and_token["token"]
-                ):
+                eyj_url_motivate = eyj_and_token["eyj"]
+                token = eyj_and_token["token"]
+
+                print(f"激活=={email}==" + datetime.now().strftime("%Y-%m-%d %H:%M:%S:%f")[:-3])
+                if motivate_gmail_by_eyj_and_token(eyj_url_motivate, token):
+                    # Write to Redis
                     registered_account = json.dumps({
                         "email": email,
                         "email_pwd": email_pwd,
                         "password": password
                     })
-                    r.rpush(registered_account_list, registered_account)
+                    redis_conn.rpush(registered_account_list, registered_account)
                     break
                 else:
                     print("Motivate failed, change account!")
                     continue
-
     @staticmethod
     def motivate_gmail_by_eyJ_and_token(eyj: str, token: str) -> bool:
         eyj = eyj[eyj.index("validate/") + 9:]
@@ -568,5 +568,4 @@ if __name__ == "__main__":
     # Example usage
     # MexicoMain.book_with_registered_account("hotmail", "10:30")
     # MexicoMain.check_visas_and_save_data_with_account(["246", "30", "9", "hotmail"])
-    MexicoMain.register_and_read_eyj_together_hotmail([])
-    pass
+    MexicoMain.register_and_read_eyj_together_hotmail()
