@@ -137,6 +137,9 @@ class Register:
             try:
                 recaptcha_code = self.get_recaptcha_code(email)
                 print(f"recaptcha_code:{recaptcha_code}")
+                if not recaptcha_code:
+                    time.sleep(5)
+                    continue
 
                 requestInfo = self.get_register_params(name, firstName, email, password, officeId,
                                                      stateId, domain, wordKey, recaptcha_code)
