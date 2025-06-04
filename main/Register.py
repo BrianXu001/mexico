@@ -329,7 +329,7 @@ class Register:
 
     def register_and_read_eyj_together_hotmail(self):
         # String pattern = args[0];  # check or book
-        pattern = "book"
+        pattern = "check"
 
         # Connect to Redis
         redis_conn = redis.Redis(
