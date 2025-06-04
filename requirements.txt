@@ -1,0 +1,6 @@
+redis
+pycryptodome
+ddddocr
+selenium
+webdriver-manager
+undetected_chromedriver
