@@ -10,7 +10,7 @@ from utils.Utils import Utils
 from utils.Recaptcha import Recaptcha
 from utils.HttpUtils import HttpUtils
 from utils import obtain_email_link_from_hotmail
-
+import datetime
 
 class Register:
     def __init__(self):
@@ -136,7 +136,7 @@ class Register:
         while True:
             try:
                 recaptcha_code = self.get_recaptcha_code(email)
-                print(f"recaptcha_code:{recaptcha_code}")
+                print(datetime.datetime.now(), f"recaptcha_code:{recaptcha_code}")
                 if not recaptcha_code:
                     time.sleep(5)
                     continue
