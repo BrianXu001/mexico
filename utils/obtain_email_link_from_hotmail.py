@@ -125,9 +125,9 @@ def obtain_email_link(email, password):
             select_skip = driver.find_elements(By.ID, "iShowSkip")
 
             if (len(select_abuse) > 0):
-                import sys
-                # print("账号被锁定，获取link失败！")
-                sys.exit(1)
+                print("账号被锁定，获取link失败！")
+                driver.quit()
+                return "", ""
             elif (len(select_skip) > 0):
                 try:
                     button = WebDriverWait(driver, 8).until(
@@ -198,8 +198,9 @@ def obtain_email_link(email, password):
             time.sleep(3)
 
         if count > count_try_max:
-            import sys
-            sys.exit(1)
+            driver.quit()
+            print("count", count)
+            return "", ""
 
         count = 0
         count_try_max = 10
@@ -225,8 +226,9 @@ def obtain_email_link(email, password):
                 time.sleep(3)
             count += 1
         if count > count_try_max:
-            import sys
-            sys.exit(1)
+            driver.quit()
+            print("try_count:", count)
+            return "", ""
         # 查找邮件
         while True:
             # 查找收件箱
@@ -398,7 +400,8 @@ def obtain_email_link(email, password):
 
             element_token = WebDriverWait(driver, 15).until(
                 EC.visibility_of_element_located((By.XPATH, "//p[font[contains(text(), 'Token de validac')]]")))
-            print(element_token.text[element_token.text.find(":") + 1:].strip())
+            print(element_token.text.strip())
+            driver.quit()
             return active_href_value, element_token.text[element_token.text.find(":") + 1:].strip()
         except StaleElementReferenceException as e:
             # 获取邮件内容时页面发生了变化

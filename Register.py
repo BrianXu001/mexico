@@ -154,7 +154,7 @@ class Register:
                     headers=headers,
                     json=params
                 )
-                responseContent = HttpUtils.get_content(response)
+                responseContent = response.content
                 print(f"responseContent:{responseContent}")
 
                 decryptedContent = Utils.crypto_js_decrypt(responseContent, self.key)
@@ -389,13 +389,20 @@ class Register:
                     continue
 
                 # Read EYJ from browser
-                eyj_and_token = obtain_email_link_from_hotmail.obtain_email_link(email, email_pwd)
-                if not eyj_and_token or not eyj_and_token.get("eyj"):
+                try_count = 0
+                eyj_and_token = "", ""
+                while try_count < 2:
+                    try_count += 1
+                    eyj_and_token = obtain_email_link_from_hotmail.obtain_email_link(email, email_pwd)
+                    print("eyj_and_token", eyj_and_token)
+                    if eyj_and_token[0]:
+                        break
+                if not eyj_and_token[0]:
                     print("Can not find eyj or failed to register, change account!")
                     continue
 
-                eyj_url_motivate = eyj_and_token["eyj"]
-                token = eyj_and_token["token"]
+                eyj_url_motivate = eyj_and_token[0]
+                token = eyj_and_token[1]
 
                 print(f"激活=={email}==" + datetime.now().strftime("%Y-%m-%d %H:%M:%S:%f")[:-3])
                 if self.motivate_by_eyJ_and_token(eyj_url_motivate, token):
