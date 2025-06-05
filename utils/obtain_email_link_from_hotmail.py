@@ -21,18 +21,17 @@ def obtain_email_link(email, password):
     email_title_cn = 'SRE 预约注册'
     email_title_en = 'Registro a Citas SRE'
     link_prefix = "https://citas.sre.gob.mx/register/validate/"
-
-
     # print("初始化chrome")
     chrome_options = Options()
     # chrome_options.add_argument("--headless")
     driver = uc.Chrome(options=chrome_options, verify=False)
     # 打开谷歌邮箱登录页面
     # driver.get("https://mail.google.com/mail/u/0/")
+    print("open url")
     driver.get("https://outlook.office365.com")
 
+    print("input email and password")
     try:
-
         try:
             login_link = WebDriverWait(driver, 5).until(
                 EC.element_to_be_clickable((By.XPATH, "//a[contains(text(), 'Sign in')]"))
@@ -69,47 +68,8 @@ def obtain_email_link(email, password):
         # print("点击下一步或登录按钮")
         password_input.send_keys(Keys.RETURN)
 
-        # # skip for now
-        # try:
-        #     button = WebDriverWait(driver, 20).until(
-        #         EC.element_to_be_clickable((By.ID, "iShowSkip"))
-        #     )
-        #     button.click()
-        #     time.sleep(2)
-        # except ElementClickInterceptedException as e:
-        #     time.sleep(1)
-        # except StaleElementReferenceException as e:
-        #     pass
-        # except TimeoutException as e:
-        #     # 如果被锁定，就退出登陆
-        #     try:
-        #         WebDriverWait(driver, 10).until(EC.visibility_of_element_located((By.ID, "serviceAbuseLandingTitle")))
-        #         import sys
-        #         # print("账号被锁定，获取link失败！")
-        #         sys.exit(1)
-        #     except ElementClickInterceptedException as e:
-        #         time.sleep(1)
-        #     except StaleElementReferenceException as e:
-        #         pass
-        #     except TimeoutException as e:
-        #         pass
-        # # print("============1==============")
-        #
-        # while True:
-        #     try:
-        #         button = WebDriverWait(driver, 8).until(
-        #             EC.element_to_be_clickable((By.ID, "iShowSkip"))
-        #         )
-        #         button.click()
-        #     except ElementClickInterceptedException as e:
-        #         time.sleep(1)
-        #     except StaleElementReferenceException as e:
-        #         pass
-        #     except TimeoutException as e:
-        #         break
 
-
-        # print("============2==============")
+        print("check account")
         count_try_max = 10
         count = 0
         while True:
@@ -196,12 +156,12 @@ def obtain_email_link(email, password):
                 break
             count += 1
             time.sleep(3)
-
         if count > count_try_max:
             driver.quit()
             print("count", count)
             return "", ""
 
+        print("find email")
         count = 0
         count_try_max = 10
         while True:
@@ -305,93 +265,7 @@ def obtain_email_link(email, password):
                 pass
             break
 
-        # # # newSessionLink
-        # # try:
-        # #     button = WebDriverWait(driver, 10).until(
-        # #         EC.element_to_be_clickable((By.ID, "newSessionLink"))
-        # #     )
-        # #     button.click()
-        # # except ElementClickInterceptedException as e:
-        # #     pass
-        # # except TimeoutException as e:
-        # #     pass
-        #
-        # # print("============6==============")
-        # # 查询邮件
-        # count = 0
-        # try_count_max = 3
-        # while True:
-        #     count += 1
-        #     if count > try_count_max:
-        #         break
-        #     # 经常被放在垃圾邮箱中，因此优先从垃圾邮件中找
-        #     try:
-        #         mail_element = WebDriverWait(driver, 20).until(EC.visibility_of_element_located(
-        #             (By.XPATH, f"//div[@data-folder-name='垃圾邮件' or @data-folder-name='junk email']")))
-        #         mail_element.click()
-        #     except ElementClickInterceptedException as e:
-        #         try:
-        #             label_element = WebDriverWait(driver, 5).until(
-        #                 EC.element_to_be_clickable((By.XPATH, "//span[span[span[contains(., '拒绝') or contains(., 'Reject') ]]]"))
-        #             )
-        #             label_element.click()
-        #             continue
-        #         except TimeoutException as e:
-        #             pass
-        #
-        #     except TimeoutException as e:
-        #         pass
-        #     try:
-        #         mail_element = WebDriverWait(driver, 15).until(EC.visibility_of_element_located(
-        #             (By.XPATH, f"//div[span[contains(., '{email_title_cn}') or contains(., '{email_title_en}')]]")))
-        #         mail_element.click()
-        #         break
-        #     except ElementClickInterceptedException as e:
-        #         try:
-        #             label_element = WebDriverWait(driver, 5).until(
-        #                 EC.element_to_be_clickable((By.XPATH, "//span[span[span[contains(., '拒绝') or contains(., 'Reject') ]]]"))
-        #             )
-        #             label_element.click()
-        #
-        #         except TimeoutException as e:
-        #             pass
-        #     except TimeoutException as e:
-        #         pass
-        #
-        #
-        #     try:
-        #         mail_element = WebDriverWait(driver, 20).until(EC.visibility_of_element_located(
-        #             (By.XPATH, f"//div[@data-folder-name='收件箱' or @data-folder-name='inbox']")))
-        #         mail_element.click()
-        #     except ElementClickInterceptedException as e:
-        #         try:
-        #             label_element = WebDriverWait(driver, 5).until(
-        #                 EC.element_to_be_clickable((By.XPATH, "//span[span[span[contains(., '拒绝') or contains(., 'Reject') ]]]"))
-        #             )
-        #             label_element.click()
-        #         except TimeoutException as e:
-        #
-        #             pass
-        #     except TimeoutException as e:
-        #         pass
-        #
-        #     try:
-        #         mail_element = WebDriverWait(driver, 15).until(EC.visibility_of_element_located(
-        #             (By.XPATH, f"//div[span[contains(., '{email_title_cn}') or contains(., '{email_title_en}')]]")))
-        #         mail_element.click()
-        #         break
-        #     except ElementClickInterceptedException as e:
-        #         try:
-        #             label_element = WebDriverWait(driver, 5).until(
-        #                 EC.element_to_be_clickable((By.XPATH, "//span[span[span[contains(., '拒绝') or contains(., 'Reject') ]]]"))
-        #             )
-        #             label_element.click()
-        #             continue
-        #         except TimeoutException as e:
-        #             pass
-        #     except TimeoutException as e:
-        #         pass
-
+        print("find hred and token")
         try:
             active_href = WebDriverWait(driver, 15).until(
                 EC.element_to_be_clickable((By.XPATH, f"//a[contains(@href, '{link_prefix}')]")))
@@ -408,13 +282,15 @@ def obtain_email_link(email, password):
             time.sleep(1)
         except TimeoutException as e:
             pass
+
         driver.quit()
+        print("got some error")
         return "", ""
 
     except Exception as e:
         driver.quit()
         traceback_info = traceback.format_exc()
-        # print(f'{traceback_info}')
+        print("got exception:", f'{traceback_info}')
         return "", ""
 
 
