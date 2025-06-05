@@ -255,19 +255,11 @@ class Register:
                     try_count += 1
                     time.sleep(1)
                     continue
-
-                # Assuming the response is encrypted and needs decryption (placeholder)
-                # In Python, you would need to implement the decryption logic
-                # For now, we'll assume the response is JSON
                 try:
-                    response_data = response.json()
-                    if 'img' not in response_data or response_data['img'] == "null":
-                        print("img is empty!")
-                        return False
-
-                    # Save captcha image (base64 decoding)
-                    img_data = response_data['img'][22:]  # Remove data:image/png;base64, prefix
-
+                    content = response.text
+                    decrypted_content = Utils.crypto_js_decrypt(content, self.key)
+                    data = json.loads(decrypted_content)
+                    img_data = data.get("img", "")[22:]  # Remove the data:image/png;base64, prefix
                     code = Recaptcha.recognize(img_data)
                     print(f"recognize code: {code}")
 
@@ -300,12 +292,10 @@ class Register:
                     time.sleep(1)
                     continue
 
-                # Assuming response needs decryption (placeholder)
                 try:
                     response_str = Utils.crypto_js_decrypt(response2.text, self.key)  # You need to implement this
                     response_json = json.loads(response_str)
                     print(response_str)
-
                     if response_json.get("success", False):
                         return True
                     elif "El dominio de correo electr" in response_str:
@@ -420,5 +410,8 @@ class Register:
 
 
 if __name__ == "__main__":
-    register = Register()
-    register.register_and_read_eyj_together_hotmail()
+    # register = Register()
+    # register.register_and_read_eyj_together_hotmail()
+    data = "a", "a"
+    data = "b", "b"
+    print(data)
