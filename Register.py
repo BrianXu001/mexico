@@ -410,8 +410,5 @@ class Register:
 
 
 if __name__ == "__main__":
-    # register = Register()
-    # register.register_and_read_eyj_together_hotmail()
-    data = "a", "a"
-    data = "b", "b"
-    print(data)
+    register = Register()
+    register.register_and_read_eyj_together_hotmail()
