@@ -274,9 +274,10 @@ def obtain_email_link(email, password):
 
             element_token = WebDriverWait(driver, 15).until(
                 EC.visibility_of_element_located((By.XPATH, "//p[font[contains(text(), 'Token de validac')]]")))
-            print(element_token.text.strip())
+            print(element_token.text)
+            token = element_token.text[element_token.text.find(":") + 1:].strip()
             driver.quit()
-            return active_href_value, element_token.text[element_token.text.find(":") + 1:].strip()
+            return active_href_value, token
         except StaleElementReferenceException as e:
             # 获取邮件内容时页面发生了变化
             time.sleep(1)
