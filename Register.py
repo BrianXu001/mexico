@@ -11,6 +11,12 @@ from utils.Recaptcha import Recaptcha
 from utils.HttpUtils import HttpUtils
 from utils import obtain_email_link_from_hotmail
 
+import undetected_chromedriver as uc
+from selenium.webdriver.chrome.options import Options
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
+from selenium.webdriver.common.by import By
+
 
 class Register:
     def __init__(self):
@@ -185,6 +191,28 @@ class Register:
 
         return 0
 
+    def check_citas_homepage(self):
+        chrome_options = Options()
+        chrome_options.add_argument("--headless")
+        # chrome_options.add_argument("--no-sandbox")
+        chrome_options.add_argument("--disable-gpu")
+        driver = uc.Chrome(options=chrome_options, verify=False)
+
+        while True:
+            driver.get("https://citas.sre.gob.mx/")
+            driver.maximize_window()
+            try:
+                login_link = WebDriverWait(driver, 30).until(
+                    EC.element_to_be_clickable((By.XPATH, "//button[contains(text(), 'Oficinas Consulares')]"))
+                )
+                login_link.click()
+                break
+            except Exception as e:
+                pass
+                print("Sign in按钮未能获取")
+                time.sleep(3)
+        driver.quit()
+
     def register(self, username, password):
         firstNameCandidates = [
             "ZHAO", "QIAN", "SUN", "LI", "ZHOU", "WU",
@@ -215,9 +243,12 @@ class Register:
         # beijing
         # officeId = 59
         # stateId = 3643
+        # TODO 首先访问主页
+        print("check_citas_homepage")
+        self.check_citas_homepage()
         return self.register_with_err_code(name, firstName, username, password, officeId, stateId, domain, wordKey)
 
-    def motivate_by_eyJ_and_token(self, eyJ, token, max_retries=99):
+    def motivate_by_eyj_and_token(self, eyJ, token, max_retries=99):
         eyJ = eyJ[eyJ.index("validate/") + 9:]
         try_count = 0
 
@@ -395,7 +426,7 @@ class Register:
                 token = eyj_and_token[1]
 
                 print(f"激活=={email}==" + datetime.now().strftime("%Y-%m-%d %H:%M:%S:%f")[:-3])
-                if self.motivate_by_eyJ_and_token(eyj_url_motivate, token):
+                if self.motivate_by_eyj_and_token(eyj_url_motivate, token):
                     # Write to Redis
                     registered_account = json.dumps({
                         "email": email,
