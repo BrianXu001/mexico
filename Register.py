@@ -12,10 +12,16 @@ from utils.HttpUtils import HttpUtils
 from utils import obtain_email_link_from_hotmail
 
 import undetected_chromedriver as uc
+from webdriver_manager.chrome import ChromeDriverManager
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.common.by import By
+
+
+ChromeDriverManager().install()
+import ssl
+ssl._create_default_https_context = ssl._create_unverified_context
 
 
 class Register:
