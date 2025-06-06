@@ -18,7 +18,7 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.common.by import By
 
-
+print("install ChromeDriverManager")
 ChromeDriverManager().install()
 import ssl
 ssl._create_default_https_context = ssl._create_unverified_context
@@ -175,6 +175,7 @@ class Register:
                     print("response is empty!")
                 elif "Captcha ERROR" in decryptedContent:
                     print(f"{name} response:{decryptedContent}")
+                    time.sleep(3)
                     continue
                 elif "No fue posible guardar la informaci" in decryptedContent:
                     print(f"{name} response:{decryptedContent}")
@@ -183,7 +184,7 @@ class Register:
                     try_count += 1
                     print(f"{name} response:{decryptedContent}")
                     print(f"try again! {try_count}")
-                    time.sleep(1)
+                    time.sleep(3)
                     continue
                 else:
                     print(f"{name} response:{decryptedContent}")
@@ -202,6 +203,8 @@ class Register:
         chrome_options.add_argument("--headless")
         # chrome_options.add_argument("--no-sandbox")
         chrome_options.add_argument("--disable-gpu")
+        chrome_options.add_argument("--password-store=basic")  # 禁用密钥环
+        chrome_options.add_argument("--no-first-run")
         driver = uc.Chrome(options=chrome_options, verify=False)
 
         while True:
@@ -217,6 +220,7 @@ class Register:
                 pass
                 print("Sign in按钮未能获取")
                 time.sleep(3)
+        print("check citas homepage success!")
         driver.quit()
 
     def register(self, username, password):
