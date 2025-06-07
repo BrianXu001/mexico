@@ -96,6 +96,7 @@ def obtain_email_link(email, password):
                         EC.element_to_be_clickable((By.ID, "iShowSkip"))
                     )
                     button.click()
+                    print("iShowSkip")
                 except ElementClickInterceptedException as e:
                     time.sleep(1)
                     continue
@@ -111,10 +112,12 @@ def obtain_email_link(email, password):
                         (By.XPATH, "//button[@aria-label='Skip for now' or @aria-label='暂时跳过']"))
                 )
                 button.click()
+                print("Skip for now")
                 button = WebDriverWait(driver, 10).until(
                     EC.element_to_be_clickable((By.ID, "declineButton"))
                 )
                 button.click()
+                print("declineButton")
                 break
             elif (len(select_2) > 0):
                 # print("============4==============")
@@ -123,6 +126,7 @@ def obtain_email_link(email, password):
                         EC.element_to_be_clickable((By.CSS_SELECTOR, "button[data-testid='secondaryButton']"))
                     )
                     button.click()
+                    print("secondaryButton")
                     time.sleep(5)
                     # print("============4-1==============")
                     select4 = driver.find_elements(By.CSS_SELECTOR, "button[data-testid='secondaryButton']")
@@ -133,12 +137,14 @@ def obtain_email_link(email, password):
                             EC.element_to_be_clickable((By.CSS_SELECTOR, "button[data-testid='secondaryButton']"))
                         )
                         button.click()
+                        print("secondaryButton")
                     elif (len(select5) > 0):
                         # print("============4-1-2==============")
                         close_icon = WebDriverWait(driver, 10).until(
                             EC.element_to_be_clickable((By.CSS_SELECTOR, "svg.fui-Icon-regular"))
                         )
                         close_icon.click()
+                        print("svg.fui-Icon-regular")
                     # print("============4-2==============")
                 except TimeoutException as e:
                     time.sleep(5 * 60)
@@ -149,12 +155,14 @@ def obtain_email_link(email, password):
                     EC.element_to_be_clickable((By.CSS_SELECTOR, "svg.fui-Icon-regular"))
                 )
                 close_icon.click()
+                print("svg.fui-Icon-regular")
                 break
             elif (len(select_4) > 0):
                 button = WebDriverWait(driver, 10).until(
                     EC.element_to_be_clickable((By.ID, "declineButton"))
                 )
                 button.click()
+                print("declineButton")
                 break
             count += 1
             time.sleep(3)
@@ -163,7 +171,7 @@ def obtain_email_link(email, password):
             print("count", count)
             return "", ""
 
-        print("find email")
+        print("find email..")
         count = 0
         count_try_max = 10
         while True:
@@ -177,12 +185,14 @@ def obtain_email_link(email, password):
                         EC.element_to_be_clickable((By.ID, "newSessionLink"))
                     )
                     button.click()
+                    print("find newSessionLink")
                 except ElementClickInterceptedException as e:
                     time.sleep(1)
                     continue
                 time.sleep(3)
                 continue
             elif (len(select_2) > 0):
+                print("find junk email")
                 break
             else:
                 time.sleep(3)
@@ -192,12 +202,14 @@ def obtain_email_link(email, password):
             print("try_count:", count)
             return "", ""
         # 查找邮件
+        print("search email..")
         while True:
             # 查找收件箱
             try:
                 mail_element = WebDriverWait(driver, 10).until(EC.visibility_of_element_located(
                     (By.XPATH, f"//div[@data-folder-name='收件箱' or @data-folder-name='inbox']")))
                 mail_element.click()
+                print("search inbox..")
             except ElementClickInterceptedException as e:
                 try:
                     label_element = WebDriverWait(driver, 5).until(
@@ -233,6 +245,7 @@ def obtain_email_link(email, password):
                 mail_element = WebDriverWait(driver, 10).until(EC.visibility_of_element_located(
                     (By.XPATH, f"//div[@data-folder-name='垃圾邮件' or @data-folder-name='junk email']")))
                 mail_element.click()
+                print("search junk email..")
             except ElementClickInterceptedException as e:
                 try:
                     label_element = WebDriverWait(driver, 5).until(
@@ -267,7 +280,7 @@ def obtain_email_link(email, password):
                 pass
             break
 
-        print("find hred and token")
+        print("search hred and token")
         try:
             active_href = WebDriverWait(driver, 15).until(
                 EC.element_to_be_clickable((By.XPATH, f"//a[contains(@href, '{link_prefix}')]")))
@@ -304,7 +317,7 @@ if __name__ == "__main__":
 #    args = parser.parse_args()
 #    email = args.arg1
 #    password = args.arg2
-
-    email = "kzcszhd7079@hotmail.com"
-    password = "awa168459"
+    # bdovoug2@hotmail.com----qas340671
+    email = "bdovoug2@hotmail.com"
+    password = "qas340671"
     obtain_email_link(email, password)
