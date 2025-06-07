@@ -32,9 +32,9 @@ class Register:
         self.register_type = register_type
         self.email_type = email_type
 
-        self.redis_signal_list = "0_"
-        self.redis_account_raw_list = "0_"
-        self.redis_registered_account_list = "0_"
+        self.redis_signal_list = "0"
+        self.redis_account_raw_list = "0"
+        self.redis_registered_account_list = "0"
         # check or book
         if self.register_type == "book":
             self.redis_signal_list += "_book"
