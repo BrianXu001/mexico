@@ -18,6 +18,8 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.common.by import By
 
+import argparse
+
 print("install ChromeDriverManager")
 ChromeDriverManager().install()
 import ssl
@@ -25,8 +27,34 @@ ssl._create_default_https_context = ssl._create_unverified_context
 
 
 class Register:
-    def __init__(self):
+    def __init__(self, register_type="check", email_type="hotmail"):
         self.key = "ca0d02b0df9839e77ae6ad1c1b48654c"
+        self.register_type = register_type
+        self.email_type = email_type
+
+        self.redis_signal_list = "0_"
+        self.redis_account_raw_list = "0_"
+        self.redis_registered_account_list = "0_"
+        # check or book
+        if self.register_type == "book":
+            self.redis_signal_list += "_book"
+            self.redis_account_raw_list += "_book"
+            self.redis_registered_account_list += "_book"
+        else:
+            self.redis_signal_list += "_check"
+            self.redis_account_raw_list += "_check"
+            self.redis_registered_account_list += "_check"
+        # hotmail or gmail
+        if self.email_type == "gmail":
+            self.redis_signal_list += "_gmail"
+            self.redis_account_raw_list += "_gmail"
+        else:
+            self.redis_signal_list += "_hotmail"
+            self.redis_account_raw_list += "_hotmail"
+        self.redis_signal_list += "_register_signal"
+        self.redis_account_raw_list += "_raw_account"
+        self.redis_registered_account_list += "_registered_account"
+
 
     def generate_recaptcha_url(self, user_name: str) -> str:
         try:
@@ -362,36 +390,14 @@ class Register:
         return False
 
     def register_and_read_eyj_together_hotmail(self):
-        # String pattern = args[0];  # check or book
-        pattern = "check"
-
         # Connect to Redis
-        redis_conn = redis.Redis(
-            host='47.254.14.124',
-            port=6379,
-            db=0,
-            password='2023@mexico',
-            decode_responses=True
-        )
-
-        # Initialize Redis keys based on pattern
-        if pattern == "check":
-            hotmail_account_raw = "0_raw_hotmail_account_check"
-            register_request_signal = "0_register_request_signal_check_hotmail"
-            account_need_activate = "0_account_need_activate_check_hotmail"
-            registered_account_list = "0_registered_account_list_check"
-        else:
-            hotmail_account_raw = "0_raw_hotmail_account_book"
-            register_request_signal = "0_register_request_signal_book_hotmail"
-            account_need_activate = "0_account_need_activate_book_hotmail"
-            registered_account_list = "0_registered_account_list_book"
-
+        redis_conn = redis.Redis(host='47.254.14.124', port=6379, db=0, password='2023@mexico', decode_responses=True)
         while True:
             # Wait for register signal
             while True:
-                register_signal = redis_conn.lpop(register_request_signal)
+                register_signal = redis_conn.lpop(self.redis_signal_list)
                 if not register_signal:
-                    print(f"check register request signal![{register_request_signal}]")
+                    print(f"check register request signal![{self.redis_signal_list}]")
                     time.sleep(3)
                 else:
                     print("find register signal!!")
@@ -399,9 +405,9 @@ class Register:
 
             # Process accounts
             while True:
-                account_raw = redis_conn.lpop(hotmail_account_raw)
+                account_raw = redis_conn.lpop(self.redis_account_raw_list)
                 if not account_raw:
-                    print(f"Can not find gmail account![{hotmail_account_raw}]")
+                    print(f"Can not find gmail account![{self.redis_account_raw_list}]")
                     time.sleep(3)
                     continue
 
@@ -443,7 +449,7 @@ class Register:
                         "email_pwd": email_pwd,
                         "password": password
                     })
-                    redis_conn.rpush(registered_account_list, registered_account)
+                    redis_conn.rpush(self.redis_registered_account_list, registered_account)
                     break
                 else:
                     print("Motivate failed, change account!")
@@ -451,5 +457,11 @@ class Register:
 
 
 if __name__ == "__main__":
-    register = Register()
+    parser = argparse.ArgumentParser(description="输入gmail账号、密码")
+    parser.add_argument("arg1", help="register_type")
+    parser.add_argument("arg2", help="email_type")
+    args = parser.parse_args()
+    register_type = args.arg1
+    email_type = args.arg2
+    register = Register(register_type, email_type)
     register.register_and_read_eyj_together_hotmail()
