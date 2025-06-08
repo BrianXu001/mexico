@@ -24,8 +24,10 @@ def obtain_email_link(email, password):
     # print("初始化chrome")
     chrome_options = Options()
     # chrome_options.add_argument("--headless")
+    chrome_options.add_argument("--disable-gpu")
     chrome_options.add_argument("--password-store=basic")  # 禁用密钥环
     chrome_options.add_argument("--no-first-run")
+    chrome_options.add_argument("--start-maximized")
     driver = uc.Chrome(options=chrome_options, verify=False)
     # 打开谷歌邮箱登录页面
     # driver.get("https://mail.google.com/mail/u/0/")
