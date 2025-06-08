@@ -237,9 +237,9 @@ class Register:
         driver = uc.Chrome(options=chrome_options, verify=False)
 
         while True:
-            driver.get("https://citas.sre.gob.mx/")
-            driver.maximize_window()
             try:
+                driver.get("https://citas.sre.gob.mx/")
+                driver.maximize_window()
                 login_link = WebDriverWait(driver, 30).until(
                     EC.element_to_be_clickable((By.XPATH, "//button[contains(text(), 'Oficinas Consulares')]"))
                 )
