@@ -23,7 +23,7 @@ def obtain_email_link(email, password):
     link_prefix = "https://citas.sre.gob.mx/register/validate/"
     # print("初始化chrome")
     chrome_options = Options()
-    chrome_options.add_argument("--headless")
+    # chrome_options.add_argument("--headless")
     chrome_options.add_argument("--password-store=basic")  # 禁用密钥环
     chrome_options.add_argument("--no-first-run")
     driver = uc.Chrome(options=chrome_options, verify=False)
@@ -183,6 +183,7 @@ def obtain_email_link(email, password):
                         EC.element_to_be_clickable((By.ID, "newSessionLink"))
                     )
                     button.click()
+                    time.sleep(3)
                     print("find newSessionLink")
                 except ElementClickInterceptedException as e:
                     time.sleep(1)
