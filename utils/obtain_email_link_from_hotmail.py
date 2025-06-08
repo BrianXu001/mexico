@@ -20,11 +20,19 @@ ssl._create_default_https_context = ssl._create_unverified_context
 
 
 def obtain_email_link(email, password):
-    chrome_version = webdriver.Chrome().capabilities['browserVersion']
+    chrome_options = Options()
+    # chrome_options.add_argument("--headless")
+    chrome_options.add_argument("--no-sandbox")
+    chrome_options.add_argument("--disable-gpu")
+    chrome_options.add_argument("--password-store=basic")  # 禁用密钥环
+    chrome_options.add_argument("--no-first-run")
+    chrome_options.add_argument("--start-maximized")
+
+    chrome_version = webdriver.Chrome(options=chrome_options).capabilities['browserVersion']
     print(f"Chrome 版本: {chrome_version}")
 
     # 检查 ChromeDriver 版本
-    driver_version = webdriver.Chrome().capabilities['chrome']['chromedriverVersion'].split(' ')[0]
+    driver_version = webdriver.Chrome(options=chrome_options).capabilities['chrome']['chromedriverVersion'].split(' ')[0]
     print(f"ChromeDriver 版本: {driver_version}")
 
     email_title_cn = 'SRE 预约注册'
@@ -33,6 +41,7 @@ def obtain_email_link(email, password):
     # print("初始化chrome")
     chrome_options = Options()
     # chrome_options.add_argument("--headless")
+    chrome_options.add_argument("--no-sandbox")
     chrome_options.add_argument("--disable-gpu")
     chrome_options.add_argument("--password-store=basic")  # 禁用密钥环
     chrome_options.add_argument("--no-first-run")
