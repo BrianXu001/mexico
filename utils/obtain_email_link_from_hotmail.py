@@ -72,7 +72,7 @@ def obtain_email_link(email, password):
         # print("输入电子邮件")
         email_input = driver.find_element(By.NAME, "loginfmt")
         email_input.send_keys(email)
-        time.sleep(2)
+        time.sleep(5)
         # 点击下一步
         email_input.send_keys(Keys.RETURN)
         # 等待密码输入框可见
@@ -85,7 +85,7 @@ def obtain_email_link(email, password):
         # print("输入密码")
         password_input = driver.find_element(By.NAME, "passwd")
         password_input.send_keys(password)
-        time.sleep(2)
+        time.sleep(5)
         # 点击下一步或登录按钮
         # print("点击下一步或登录按钮")
         password_input.send_keys(Keys.RETURN)
