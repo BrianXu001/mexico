@@ -9,8 +9,6 @@ from selenium.common.exceptions import TimeoutException, NoSuchElementException,
 
 import undetected_chromedriver as uc
 
-# from selenium import webdriver
-
 import time, traceback
 import argparse
 
@@ -20,34 +18,18 @@ ssl._create_default_https_context = ssl._create_unverified_context
 
 
 def obtain_email_link(email, password):
-    # chrome_options = Options()
-    # # chrome_options.add_argument("--headless")
-    # chrome_options.add_argument("--no-sandbox")
-    # chrome_options.add_argument("--disable-gpu")
-    # chrome_options.add_argument("--password-store=basic")  # 禁用密钥环
-    # chrome_options.add_argument("--no-first-run")
-    # chrome_options.add_argument("--start-maximized")
-
-    # chrome_version = webdriver.Chrome(options=chrome_options).capabilities['browserVersion']
-    # print(f"Chrome 版本: {chrome_version}")
-
-    # 检查 ChromeDriver 版本
-    # driver_version = webdriver.Chrome(options=chrome_options).capabilities['chrome']['chromedriverVersion'].split(' ')[0]
-    # print(f"ChromeDriver 版本: {driver_version}")
-
     email_title_cn = 'SRE 预约注册'
     email_title_en = 'Registro a Citas SRE'
     link_prefix = "https://citas.sre.gob.mx/register/validate/"
     # print("初始化chrome")
     chrome_options = Options()
-    # chrome_options.add_argument("--headless")
-    chrome_options.add_argument("--no-sandbox")
+    chrome_options.add_argument("--headless")
+    # chrome_options.add_argument("--no-sandbox")
     chrome_options.add_argument("--disable-gpu")
     chrome_options.add_argument("--password-store=basic")  # 禁用密钥环
     chrome_options.add_argument("--no-first-run")
     chrome_options.add_argument("--start-maximized")
     driver = uc.Chrome(options=chrome_options, verify=False)
-    # driver = webdriver.Chrome(options=chrome_options)
     # 打开谷歌邮箱登录页面
     # driver.get("https://mail.google.com/mail/u/0/")
     print("open url")
@@ -72,7 +54,7 @@ def obtain_email_link(email, password):
         # print("输入电子邮件")
         email_input = driver.find_element(By.NAME, "loginfmt")
         email_input.send_keys(email)
-        time.sleep(5)
+        time.sleep(3)
         # 点击下一步
         email_input.send_keys(Keys.RETURN)
         # 等待密码输入框可见
@@ -85,7 +67,7 @@ def obtain_email_link(email, password):
         # print("输入密码")
         password_input = driver.find_element(By.NAME, "passwd")
         password_input.send_keys(password)
-        time.sleep(5)
+        time.sleep(3)
         # 点击下一步或登录按钮
         # print("点击下一步或登录按钮")
         password_input.send_keys(Keys.RETURN)
@@ -104,6 +86,13 @@ def obtain_email_link(email, password):
 
             select_abuse = driver.find_elements(By.ID, "serviceAbuseLandingTitle")
             select_skip = driver.find_elements(By.ID, "iShowSkip")
+
+            select_outlook_request = driver.find_elements(By.XPATH, "//body[text()='Too Many Requests']")
+
+            if (len(select_outlook_request) > 0):
+                print("outlook detection: Too Many Requests. Program stop!")
+                import sys
+                sys.exit(1)
 
             if (len(select_abuse) > 0):
                 print("账号被锁定，获取link失败！")
