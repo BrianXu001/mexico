@@ -7,9 +7,9 @@ from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.common.keys import Keys
 from selenium.common.exceptions import TimeoutException, NoSuchElementException, ElementNotInteractableException, ElementClickInterceptedException, StaleElementReferenceException
 
-# import undetected_chromedriver as uc
+import undetected_chromedriver as uc
 
-from selenium import webdriver
+# from selenium import webdriver
 
 import time, traceback
 import argparse
@@ -20,20 +20,20 @@ ssl._create_default_https_context = ssl._create_unverified_context
 
 
 def obtain_email_link(email, password):
-    chrome_options = Options()
-    # chrome_options.add_argument("--headless")
-    chrome_options.add_argument("--no-sandbox")
-    chrome_options.add_argument("--disable-gpu")
-    chrome_options.add_argument("--password-store=basic")  # 禁用密钥环
-    chrome_options.add_argument("--no-first-run")
-    chrome_options.add_argument("--start-maximized")
+    # chrome_options = Options()
+    # # chrome_options.add_argument("--headless")
+    # chrome_options.add_argument("--no-sandbox")
+    # chrome_options.add_argument("--disable-gpu")
+    # chrome_options.add_argument("--password-store=basic")  # 禁用密钥环
+    # chrome_options.add_argument("--no-first-run")
+    # chrome_options.add_argument("--start-maximized")
 
-    chrome_version = webdriver.Chrome(options=chrome_options).capabilities['browserVersion']
-    print(f"Chrome 版本: {chrome_version}")
+    # chrome_version = webdriver.Chrome(options=chrome_options).capabilities['browserVersion']
+    # print(f"Chrome 版本: {chrome_version}")
 
     # 检查 ChromeDriver 版本
-    driver_version = webdriver.Chrome(options=chrome_options).capabilities['chrome']['chromedriverVersion'].split(' ')[0]
-    print(f"ChromeDriver 版本: {driver_version}")
+    # driver_version = webdriver.Chrome(options=chrome_options).capabilities['chrome']['chromedriverVersion'].split(' ')[0]
+    # print(f"ChromeDriver 版本: {driver_version}")
 
     email_title_cn = 'SRE 预约注册'
     email_title_en = 'Registro a Citas SRE'
@@ -46,8 +46,8 @@ def obtain_email_link(email, password):
     chrome_options.add_argument("--password-store=basic")  # 禁用密钥环
     chrome_options.add_argument("--no-first-run")
     chrome_options.add_argument("--start-maximized")
-    # driver = uc.Chrome(options=chrome_options, verify=False)
-    driver = webdriver.Chrome(options=chrome_options)
+    driver = uc.Chrome(options=chrome_options, verify=False)
+    # driver = webdriver.Chrome(options=chrome_options)
     # 打开谷歌邮箱登录页面
     # driver.get("https://mail.google.com/mail/u/0/")
     print("open url")
