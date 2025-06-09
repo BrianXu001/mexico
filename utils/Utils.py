@@ -8,6 +8,13 @@ from Crypto.Util.Padding import pad, unpad
 from Crypto.Random import get_random_bytes
 import configparser
 
+import smtplib
+from email.mime.text import MIMEText
+from email.utils import formatdate
+
+import ssl
+ssl._create_default_https_context = ssl._create_unverified_context
+
 
 class Utils:
     @staticmethod
@@ -94,8 +101,39 @@ class Utils:
             for i in range(len(generated_data)):
                 generated_data[i] = 0
 
+    @staticmethod
+    def send_email(subject, text):
+        print(f"{datetime.now().strftime('%Y-%m-%d %H:%M:%S')} Sending Email...")
+        from_address = "519335189@qq.com"
+        username = "519335189@qq.com"
+        password = "svcjgppiolmfcahc"
+        # to_address = "519335189@qq.com"
+        # to_address = "1219953432@qq.com"
+        to_address = "519335189@qq.com"
+        # Create message
+        msg = MIMEText(text)
+        msg['Subject'] = subject
+        msg['From'] = from_address
+        msg['To'] = to_address
+        # msg['Date'] = formatdate(localtime=True)
+
+        try:
+            with smtplib.SMTP_SSL("smtp.qq.com", 465) as server:
+                server.login(username, password)
+                server.sendmail(from_address, [to_address], msg.as_string())
+        except smtplib.SMTPResponseException as e:
+            if e.smtp_code == -1 and e.smtp_error == b'\x00\x00\x00':
+                print("Warning: Non-standard server response, but email was likely sent.")
+            else:
+                raise  # 重新抛出其他SMTP错误
+        except Exception as e:
+            print(f"Error: {e}")
+
+        print(f"{datetime.now().strftime('%Y-%m-%d %H:%M:%S')} Send Email Success!")
+
 
 if __name__ == "__main__":
-    encrypt_data = "U2FsdGVkX1+y5MVbkylIrKHtomhd65omeKM4t4DA9GblajwVTS8JdKER8hlmtwei9cK8YM8hZTk82aGt0p2J8osxVhc2f2kHKD5oPUWtj99VE3dc7Cj341M7AmFo+ACXLeyqWzTA+R2d1RBa1yjYiQ=="
-    res = Utils.crypto_js_decrypt(encrypt_data, "ef93be283631ae59456994273215fa5b")
-    print(res)
+    # encrypt_data = "U2FsdGVkX1+y5MVbkylIrKHtomhd65omeKM4t4DA9GblajwVTS8JdKER8hlmtwei9cK8YM8hZTk82aGt0p2J8osxVhc2f2kHKD5oPUWtj99VE3dc7Cj341M7AmFo+ACXLeyqWzTA+R2d1RBa1yjYiQ=="
+    # res = Utils.crypto_js_decrypt(encrypt_data, "ef93be283631ae59456994273215fa5b")
+    # print(res)
+    Utils.send_email("Test", "test")

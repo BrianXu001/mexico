@@ -18,7 +18,7 @@ from ..utils.Recaptcha import Recaptcha
 
 
 class MexicoClient:
-    def __init__(self, user_id: str = "", password: str = "", person=None, properties=None):
+    def __init__(self, user_id: str = "", password: str = "", person=None):
         self.user_id = user_id
         self.password = password
         self.person = person
@@ -49,7 +49,6 @@ class MexicoClient:
             self.CHECK_VISAS_LIST = f"{person.dst_office.var_cad_oficina}_check_visas"
 
         self.current_date = datetime.now().strftime("%Y-%m-%d")
-        self.properties = properties or {}
         self.rnd = random.Random()
         self.available_days = []
         self.events = []
@@ -80,13 +79,13 @@ class MexicoClient:
             "pragma": "no-cache",
             "priority": "u=1, i",
             "referer": "https://citas.sre.gob.mx/",
-            "sec-ch-ua": "\"Google Chrome\";v=\"129\", \"Not=A?Brand\";v=\"8\", \"Chromium\";v=\"129\"",
+            "sec-ch-ua": "\"Chromium\";v=\"136\", \"Google Chrome\";v=\"136\", \"Not.A/Brand\";v=\"99\"",
             "sec-ch-ua-mobile": "?0",
             "sec-ch-ua-platform": "\"Linux\"",
             "sec-fetch-dest": "empty",
             "sec-fetch-mode": "cors",
             "sec-fetch-site": "same-site",
-            "user-agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+            "user-agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/136.0.0.0 Safari/537.36",
             "x-csrf-token": "",
             "x-requested-with": "XMLHttpRequest",
             "x-sre-api-key": "i3sid7ZQVsp0BPPC8yrdWqby5XZiRcu9"
@@ -109,13 +108,13 @@ class MexicoClient:
             "origin": "https://citas.sre.gob.mx",
             "pragma": "no-cache",
             "referer": "https://citas.sre.gob.mx/",
-            "sec-ch-ua": "\"Not?A_Brand\";v=\"8\", \"Chromium\";v=\"108\", \"Google Chrome\";v=\"108\"",
+            "sec-ch-ua": "\"Chromium\";v=\"136\", \"Google Chrome\";v=\"136\", \"Not.A/Brand\";v=\"99\"",
             "sec-ch-ua-mobile": "?0",
             "sec-ch-ua-platform": "\"Linux\"",
             "sec-fetch-dest": "empty",
             "sec-fetch-mode": "cors",
             "sec-fetch-site": "same-site",
-            "user-agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+            "user-agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/136.0.0.0 Safari/537.36",
             "x-requested-with": "XMLHttpRequest"
         }
 
@@ -184,7 +183,7 @@ class MexicoClient:
                 "email": self.user_id,
                 "password": self.password,
                 "location": "ext",
-                "broser": "5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/129.0.0.0 Safari/537.36",
+                "broser": "5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/136.0.0.0 Safari/537.36",
                 "platform": "Linux x86_64",
                 "lang": "zh",
                 "atuh_login": True,
@@ -244,37 +243,6 @@ class MexicoClient:
             print("==login error1==>")
             print(e)
             return 300
-
-    def save_data1(self) -> bool:
-        try:
-            request_info = Utils.crypto_js_encrypt(json.dumps(self.get_save_data_request1()), self.key)
-            params = {"encrypt": request_info}
-
-            response = requests.post(
-                self.save_data_url,
-                headers=self.get_headers_with_auth(),
-                json=params
-            )
-
-            response_content = response.text
-            decrypted_content = Utils.crypto_js_decrypt(response_content, self.key)
-            print(f"save1_response: {decrypted_content}")
-
-            if not decrypted_content:
-                print("save_data1 empty response!")
-                return False
-
-            response_json = json.loads(decrypted_content)
-            if "status" in response_json and not response_json["status"]:
-                print(f"save_data1 responseJson: {response_json}")
-                return False
-
-            self.traking_id = response_json.get("id", "")
-            return True
-        except Exception as e:
-            print("==save_data1 error==>")
-            print(e)
-            return False
 
     def get_save_data_request1(self) -> Dict:
         save_data = {
@@ -648,6 +616,164 @@ class MexicoClient:
                 self.send_email_count += 1
             except Exception as e:
                 print(f"Error sending email with attachment: {e}")
+
+    def verify_user(self):
+        url = "https://citasapi.sre.gob.mx/api/appointment/v1/verify-user-data"
+        headers = {
+            "accept": "application/json",
+            "accept-c": "true",
+            "accept-encoding": "gzip, deflate, br",
+            "accept-language": "zh-CN,zh;q=0.9,en;q=0.8",
+            "authorization": f"Bearer {self.citas_token}",
+            "cache-control": "no-cache",
+            "content-type": "application/json;charset=UTF-8",
+            "origin": "https://citas.sre.gob.mx",
+            "pragma": "no-cache",
+            "priority": "u=1, i",
+            "referer": "https://citas.sre.gob.mx/",
+            "sec-ch-ua": "\"Chromium\";v=\"136\", \"Google Chrome\";v=\"136\", \"Not.A/Brand\";v=\"99\"",
+            "sec-ch-ua-mobile": "?0",
+            "sec-ch-ua-platform": "\"Linux\"",
+            "sec-fetch-dest": "empty",
+            "sec-fetch-mode": "cors",
+            "sec-fetch-site": "same-site",
+            "user-agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/136.0.0.0 Safari/537.36",
+            "x-csrf-token": "",
+            "x-requested-with": "XMLHttpRequest",
+            "x-sre-api-key": "i3sid7ZQVsp0BPPC8yrdWqby5XZiRcu9"
+        }
+
+        try:
+            response = requests.post(url, headers=headers)
+            response_content = response.text
+            decrypted_content = Utils.crypto_js_decrypt(response_content)  # Assuming you have a decrypt method
+
+            if not decrypted_content:
+                print("verify_user empty response!")
+                return {}
+            else:
+                print(f"verify response: {decrypted_content}")
+            response_json = json.loads(decrypted_content)
+            return response_json
+        except Exception as e:
+            print("==verify_user error==>", str(e))
+            return {}
+
+    def gen_general_info(self, office_id):
+        general_info = {
+            "officeId": office_id,  # 246:GuangZhou
+            "pcm_event_id": None,
+            "cat_system_id": 1,
+            "api_key": "M5hxYq16KRyKfGHSlKzf4d7I92SUwBA02s6fxZg4YGkgsT4sEm2kME5L1alrpB8LuVxjawsGvojISFpRzZGjcDA8ELk9a1xTJKUk"
+        }
+        return json.dumps(general_info)
+
+    def get_general_response_with_auth_by_error_code(self, office_id):
+        try:
+            request_info = Utils.crypto_js_encrypt(self.gen_general_info(office_id), self.key)
+            params = {
+                "encrypt": request_info
+            }
+
+            response = requests.post(
+                self.general_url,
+                headers=self.get_headers_with_auth(),
+                json=params
+            )
+            response_content = response.content
+            decrypted_content = Utils.crypto_js_decrypt(response_content, self.key)
+            response_json = json.loads(decrypted_content)
+            response_json["errorCode"] = "0"
+        except Exception as e:
+            print(f"getGeneralResponse error==> {e}")
+            response_json = {"errorCode": "1"}
+            return response_json
+
+        return response_json
+
+    def check_visas_with_auth_by_error_code(self, office_id):
+        try:
+            general_response = self.get_general_response_with_auth_by_error_code(office_id)
+            print(general_response)
+
+            error_code = ""
+            if "errorCode" in general_response:
+                error_code = general_response["errorCode"]
+
+            if error_code == "1":
+                return -1
+            if "error" in general_response and general_response["error"] == "Unauthenticated":
+                return -2
+            if ("success" in general_response and not general_response["success"] and general_response["message"] == "No se pudo mostrar información"):
+                return -3
+
+            available_procedures = general_response["availableProcedures"]
+
+            find_sin = False
+            find_con = False
+            for procedure_group in available_procedures:
+                for procedure in procedure_group:
+                    cat_procedure_name = procedure["cat_procedure_name"].strip().lower()
+                    cat_procedure_type_name = procedure["cat_procedure_type_name"].strip().lower()
+
+                    if "visas" in cat_procedure_name:
+                        print(f"cat_procedure_type_name: {cat_procedure_type_name}")
+                        if "sin" in cat_procedure_type_name:
+                            find_sin = True
+                        if "con" in cat_procedure_type_name:
+                            find_con = True
+                        if cat_procedure_type_name is None or cat_procedure_type_name == "null":
+                            find_sin = True
+                            find_con = True
+
+            if find_sin and find_con:
+                return 1
+            elif find_sin:
+                return 2
+            elif find_con:
+                return 3
+            else:
+                return 0
+        except Exception as e:
+            return 0
+
+    def save_data1(self):
+        try:
+            request_info = Utils.crypto_js_encrypt(json.dumps(self.get_save_data_request1()), self.key)
+            params = {
+                "encrypt": request_info
+            }
+            response = requests.post(
+                self.save_data_url,
+                headers=self.get_headers_with_auth(),
+                json=params
+            )
+            response_content = response.content
+            decrypted_content = Utils.crypto_js_decrypt(response_content, self.key)
+            print(f"save1_response: {decrypted_content}")
+            if not decrypted_content:
+                print("save_data1 empty response!")
+                return -1
+
+            response_json = json.loads(decrypted_content)
+            if "error" in response_json and response_json["error"] == "Unauthenticated":
+                return 2
+            if "success" in response_json and response_json["success"]:
+                print("got save_data_right!!!")
+
+            if "status" in response_json and not response_json["status"]:
+                print(f"save_data1 responseJson: {response_json}")
+                return -1
+
+            self.traking_id = response_json["id"]
+            print(f"trakingId1: {self.traking_id}")
+            return 1
+
+        except Exception as e:
+            print("==save_data1 error==>")
+            import traceback
+            traceback.print_exc()
+            return -1
 
 
 if __name__ == "__main__":

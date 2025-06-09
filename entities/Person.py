@@ -13,8 +13,12 @@ class Person:
             self._init_default()
         elif len(args) == 1 and isinstance(args[0], dict):
             self._init_from_json(args[0])
+        elif len(args) == 1 and isinstance(args[0], int):
+            self._init_from_office_id(args[0])
         elif len(args) == 2:
             self._init_from_state_and_formalities(args[0], args[1])
+        else:
+            print("Can not construct class Person!")
 
     def _init_default(self):
         dstCountry = "China"
@@ -160,3 +164,51 @@ class Person:
         today = datetime.today().date()
         age = today.year - birth_date.year - ((today.month, today.day) < (birth_date.month, birth_date.day))
         return age
+
+    def _init_from_office_id(self, office_id: int):
+        # # GUANGZHOU:246, BEIJING: 59, AUSTRIA:223, CANBERRA:74, RIO DE JANEIRO: 144, SHANGHAI: 164,
+        if office_id == 246:
+            self.dstState = State("Guangzhou")
+            self.dstOffice = Office("GUANGZHOU")
+            self.dstCountry = Country("China")
+        elif office_id == 59:
+            self.dstState = State("Beijing")
+            self.dstOffice = Office("BEIJING")
+            self.dstCountry = Country("China")
+        elif office_id == 164:
+            self.dstState = State("Shanghai")
+            self.dstOffice = Office("SHANGHAI")
+            self.dstCountry = Country("China")
+        elif office_id == 223:
+            self.dstState = State("Wien")
+            self.dstOffice = Office("AUSTRIA")
+            self.dstCountry = Country("Austria")
+        elif office_id == 74:
+            self.dstState = State("Australian Capital Territory")
+            self.dstOffice = Office("CANBERRA")
+            self.dstCountry = Country("Australia")
+        elif office_id == 144:
+            self.dstState = State("Rio de Janeiro")
+            self.dstOffice = Office("RIO DE JANEIRO")
+            self.dstCountry = Country("Brasil")
+        else:
+            print("can not find office_id:", office_id)
+            raise Exception("can not find office_id")
+
+        # self.formalities = Formalities("Visas", "Sin permiso del INM", "Visitante sin permiso para realizar actividades remuneradas", "EJ9023801","")
+        self.formalities = Formalities("Visas", "Con permiso del INM (Validación vía servicio web con el INM)", "", "EJ9023801", "6288241")
+
+        self.nationality = "China"
+        self.countryOfBirth = "China"
+        self.stateOfBirth = "Guangzhou"
+        self.fromCountry = Country("China")
+        self.fromState = State("Guangzhou")
+        self.fullName = "JAMES LI"
+        self.name = "JAMES"
+        self.firstName = "LI"
+        self.birthdate = "1993-09-12"
+        self.age = self._calculate_age(self.birthdate)
+        self.civilState = 1  # 婚姻状态 1:未婚, 2:已婚
+        self.cat_gender_id = 2  # 性别 1:女性, 2:男性
+        self.direction = "GUANGDONG GUANGZHOU BAIYUN"
+        self.emergencyPerson = EmergencyPerson("YINAN", "LI", "185 1958 2008", "+86 185 1958 2008")
