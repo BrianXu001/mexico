@@ -1,5 +1,5 @@
 class State:
-    stateToId = {
+    state_to_id = {
         "Distrito Federal": 330029,
         "Rio de Janeiro": 330041,
         "Ecatepec de Morelos": 974,
@@ -137,7 +137,7 @@ class State:
         "Guangzhou": 1
     }
 
-    stateToCountryId = {
+    state_to_country_id = {
         "Distrito Federal": 30,
         "Rio de Janeiro": 30,
         "Ecatepec de Morelos": 142,
@@ -193,10 +193,10 @@ class State:
             self.var_id_pais = 14
             self.var_id_entidad = 3380
         else:
-            self.state_id = self.stateToId.get(state)
+            self.state_id = self.state_to_id.get(state)
             self.var_cad_tipo_entidad = self.stateTo_cad_tipo_entidad.get(state)
             self.var_id_tipo_entidad = self.stateTo_id_tipo_entidad.get(state)
             self.var_cad_entidad = state
             self.var_oficina = True
-            self.var_id_pais = self.stateToCountryId.get(state)
-            self.var_id_entidad = self.stateToId.get(state)
+            self.var_id_pais = self.state_to_country_id.get(state)
+            self.var_id_entidad = self.state_to_id.get(state)

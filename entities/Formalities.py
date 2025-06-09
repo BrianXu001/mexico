@@ -1,14 +1,14 @@
 class Formalities:
-    formalititesToId = {
+    formalitites_to_id = {
         "Visas": "31"
     }
 
-    typeToId = {
+    type_to_id = {
         "Sin permiso del INM": "10",
         "Con permiso del INM (Validación vía servicio web con el INM)": "11"
     }
 
-    subtypeToId = {
+    subtype_to_id = {
         "Visitante sin permiso para realizar actividades remuneradas": "17"
     }
 
@@ -25,10 +25,10 @@ class Formalities:
             self.nud = ""
         else:
             self.formalitites_name = formalitites_name
-            self.formalitites_id = self.formalititesToId.get(formalitites_name, "")
+            self.formalitites_id = self.formalitites_to_id.get(formalitites_name, "")
             self.formalitites_type_name = formalitites_type_name
-            self.formalitites_type_id = self.typeToId.get(formalitites_type_name, "")
+            self.formalitites_type_id = self.type_to_id.get(formalitites_type_name, "")
             self.formalitites_subtype_name = formalitites_subtype_name
-            self.formalitites_subtype_id = self.subtypeToId.get(formalitites_subtype_name, "")
+            self.formalitites_subtype_id = self.subtype_to_id.get(formalitites_subtype_name, "")
             self.passportNumber = passportNumber
             self.nud = nud

@@ -10,6 +10,18 @@ from entities.Person import Person
 from client.MexicoClient import MexicoClient
 
 
+import undetected_chromedriver as uc
+from webdriver_manager.chrome import ChromeDriverManager
+from selenium.webdriver.chrome.options import Options
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
+from selenium.webdriver.common.by import By
+print("install ChromeDriverManager")
+ChromeDriverManager().install()
+import ssl
+ssl._create_default_https_context = ssl._create_unverified_context
+
+
 class Check:
     def __init__(self, office_id: int, sleep_time=10, reset_num=9, register_signal_type="hotmail"):
         self.office_id = office_id  # GUANGZHOU:246, BEIJING: 59, AUSTRIA:223, CANBERRA:74, RIO DE JANEIRO: 144
@@ -17,6 +29,32 @@ class Check:
         self.reset_num = reset_num
         self.register_signal_type = register_signal_type
         self.person = Person(office_id)
+
+    def check_citas_homepage(self):
+        chrome_options = Options()
+        chrome_options.add_argument("--headless")
+        # chrome_options.add_argument("--no-sandbox")
+        chrome_options.add_argument("--disable-gpu")
+        chrome_options.add_argument("--password-store=basic")  # 禁用密钥环
+        chrome_options.add_argument("--no-first-run")
+        chrome_options.add_argument("--start-maximized")
+        driver = uc.Chrome(options=chrome_options, verify=False)
+
+        while True:
+            try:
+                driver.get("https://citas.sre.gob.mx/")
+                driver.maximize_window()
+                login_link = WebDriverWait(driver, 30).until(
+                    EC.element_to_be_clickable((By.XPATH, "//button[contains(text(), 'Oficinas Consulares')]"))
+                )
+                login_link.click()
+                break
+            except Exception as e:
+                pass
+                print("Sign in按钮未能获取")
+                time.sleep(3)
+        print("check citas homepage success!")
+        driver.quit()
 
     def check_visas_and_save_data(self):
         registered_account_list = "0_check_registered_account"
@@ -39,6 +77,7 @@ class Check:
                 if not registered_account:
                     print(f"can not find registered_account account [{registered_account_list}]")
                     time.sleep(3)
+            print("find account:", registered_account)
             redis_conn.rpush(register_request_signal, "1")
 
             account_info = json.loads(registered_account)
@@ -47,6 +86,7 @@ class Check:
             password = account_info["password"]
 
             client = MexicoClient(email, password, self.person)
+            self.check_citas_homepage()
             while True:
                 error_code1 = client.login_with_recaptcha_with_error_code()
                 if error_code1 in [101, 102, 104, 105, 200]:
@@ -86,7 +126,7 @@ class Check:
                         print(f"verifyResponse: {verify_response}")
                         break
 
-                print("time:"+str(datetime.now()), "check_count:" + str(check_count))
+                print("time:"+str(datetime.now()), "check_count: " + str(check_count))
                 check_code = client.check_visas_with_auth_by_error_code(self.office_id)
                 print(f"checkCode: {check_code}")
 
@@ -109,29 +149,29 @@ class Check:
                     error_code = client.save_data1()
                     if error_code == 1:
                         print("find save_data_right!")
-                        redis_conn.rpush(f"{self.person.dstOffice.cat_office_id}_check_visas_sin_real", "find save_data")
-                        redis_conn.rpush(f"{self.person.dstOffice.cat_office_id}_check_visas_con_real", "find save_data")
-                        redis_conn.rpush(f"{self.person.dstOffice.cat_office_id}_check_visas_sin", "find save_data")
-                        redis_conn.rpush(f"{self.person.dstOffice.cat_office_id}_check_visas_con", "find save_data")
-                        Utils.send_email(f"墨西哥【{self.person.dstOffice.var_cad_oficina}】[sin][con]放号了", "墨西哥放号了")
+                        redis_conn.rpush(f"{self.person.dst_office.cat_office_id}_check_visas_sin_real", "find save_data")
+                        redis_conn.rpush(f"{self.person.dst_office.cat_office_id}_check_visas_con_real", "find save_data")
+                        redis_conn.rpush(f"{self.person.dst_office.cat_office_id}_check_visas_sin", "find save_data")
+                        redis_conn.rpush(f"{self.person.dst_office.cat_office_id}_check_visas_con", "find save_data")
+                        Utils.send_email(f"墨西哥【{self.person.dst_office.var_cad_oficina}】[sin][con]放号了", "墨西哥放号了")
                 elif check_code == 2:
                     print("Found visas[sin]!!")
                     print("check save_data!!")
                     error_code = client.save_data1()
                     if error_code == 1:
                         print("find save_data_right!")
-                        redis_conn.rpush(f"{self.person.dstOffice.cat_office_id}_check_visas_sin_real", "find save_data")
-                        redis_conn.rpush(f"{self.person.dstOffice.cat_office_id}_check_visas_sin", "find save_data")
-                        Utils.send_email(f"墨西哥【{self.person.dstOffice.var_cad_oficina}】[sin]放号了", "墨西哥放号了")
+                        redis_conn.rpush(f"{self.person.dst_office.cat_office_id}_check_visas_sin_real", "find save_data")
+                        redis_conn.rpush(f"{self.person.dst_office.cat_office_id}_check_visas_sin", "find save_data")
+                        Utils.send_email(f"墨西哥【{self.person.dst_office.var_cad_oficina}】[sin]放号了", "墨西哥放号了")
                 elif check_code == 3:
                     print("Found visas[con]!!")
                     print("check save_data!!")
                     error_code = client.save_data1()
                     if error_code == 1:
                         print("find save_data_right!")
-                        redis_conn.rpush(f"{self.person.dstOffice.cat_office_id}_check_visas_con_real", "find save_data")
-                        redis_conn.rpush(f"{self.person.dstOffice.cat_office_id}_check_visas_con", "find save_data")
-                        Utils.send_email(f"墨西哥【{self.person.dstOffice.var_cad_oficina}】[con]放号了", "墨西哥放号了")
+                        redis_conn.rpush(f"{self.person.dst_office.cat_office_id}_check_visas_con_real", "find save_data")
+                        redis_conn.rpush(f"{self.person.dst_office.cat_office_id}_check_visas_con", "find save_data")
+                        Utils.send_email(f"墨西哥【{self.person.dst_office.var_cad_oficina}】[con]放号了", "墨西哥放号了")
 
             print("hereererererererere")
             redis_conn.rpush(used_account, registered_account)
@@ -141,11 +181,11 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="input params")
 
     # check_office_id, sleep_time = 10, reset_num = 9, register_signal_type = "hotmail"
+    # GUANGZHOU:246, BEIJING: 59, AUSTRIA:223, CANBERRA:74, RIO DE JANEIRO: 144, SHANGHAI: 164,
     parser.add_argument('office_id', type=int, help='运行模式')
     parser.add_argument('--sleep_time', type=int, default=10, help='sleep_time')
     parser.add_argument('--reset_num', type=int, default=9, help='reset_num')
     parser.add_argument('--mail_type', default='hotmail', choices=['hotmail', 'gmail'], help='register_signal_type')
     args = parser.parse_args()
-
     check = Check(args.office_id, args.sleep_time, args.reset_num, args.mail_type)
     check.check_visas_and_save_data()

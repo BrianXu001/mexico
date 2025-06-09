@@ -10,11 +10,11 @@ from email.mime.text import MIMEText
 from email.mime.application import MIMEApplication
 import smtplib
 
-from ..entities.Country import Country
-from ..entities.State import State
+from entities.Country import Country
+from entities.State import State
 
-from ..utils.Utils import Utils
-from ..utils.Recaptcha import Recaptcha
+from utils.Utils import Utils
+from utils.Recaptcha import Recaptcha
 
 
 class MexicoClient:
@@ -538,7 +538,7 @@ class MexicoClient:
 
     def get_general_response(self, office_id: int, thread_info: str) -> Dict:
         try:
-            request_info = Utils.crypto_js_encrypt(json.dumps(self.gen_general_info(office_id)), self.key)
+            request_info = Utils.crypto_js_encrypt(self.gen_general_info(office_id), self.key)
             params = {"encrypt": request_info}
 
             response = requests.post(
@@ -553,14 +553,6 @@ class MexicoClient:
         except Exception as e:
             print(f"{thread_info}{datetime.now().strftime('%Y-%m-%d %H:%M:%S:%f')}getGeneralResponse error==> {e}")
             return {}
-
-    def gen_general_info(self, office_id: int) -> Dict:
-        return {
-            "officeId": office_id,
-            "pcm_event_id": None,
-            "cat_system_id": 1,
-            "api_key": "M5hxYq16KRyKfGHSlKzf4d7I92SUwBA02s6fxZg4YGkgsT4sEm2kME5L1alrpB8LuVxjawsGvojISFpRzZGjcDA8ELk9a1xTJKUk"
-        }
 
     def send_email(self, subject: str, text: str) -> None:
         if self.send_email_count <= 1:
@@ -646,7 +638,7 @@ class MexicoClient:
         try:
             response = requests.post(url, headers=headers)
             response_content = response.text
-            decrypted_content = Utils.crypto_js_decrypt(response_content)  # Assuming you have a decrypt method
+            decrypted_content = Utils.crypto_js_decrypt(response_content, self.key)
 
             if not decrypted_content:
                 print("verify_user empty response!")

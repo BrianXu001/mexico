@@ -1,5 +1,5 @@
 class Country:
-    countryToId = {
+    country_to_id = {
         "Brasil": 30,
         "Austria": 14,
         "China": 44,
@@ -8,7 +8,7 @@ class Country:
         "Mexico": 142
     }
 
-    countryToIdalpha3 = {
+    country_to_idalpha3 = {
         "Brasil": "BRA",
         "Austria": "AUT",
         "China": "CHN",
@@ -17,7 +17,7 @@ class Country:
         "Mexico": "MEX"
     }
 
-    countryToIdalpha2 = {
+    country_to_idalpha2 = {
         "Brasil": "BR",
         "Austria": "AT",
         "China": "CN",
@@ -36,9 +36,9 @@ class Country:
             self.id_pais = 14
             self.cad_nombre_es = "Austria"
         else:
-            self.country_id = self.countryToId.get(country)
-            self.idalpha3 = self.countryToIdalpha3.get(country)
-            self.idalpha2 = self.countryToIdalpha2.get(country)
+            self.country_id = self.country_to_id.get(country)
+            self.idalpha3 = self.country_to_idalpha3.get(country)
+            self.idalpha2 = self.country_to_idalpha2.get(country)
             self.tiene_edos = 1  # Default value, not set in Java constructor
-            self.id_pais = self.countryToId.get(country)
+            self.id_pais = self.country_to_id.get(country)
             self.cad_nombre_es = country

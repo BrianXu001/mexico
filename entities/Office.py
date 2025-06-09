@@ -1,5 +1,5 @@
 class Office:
-    officeToId = {
+    office_to_id = {
         "BRASILIA": 67,
         "RIO DE JANEIRO": 144,
         "CANBERRA": 74,
@@ -9,7 +9,7 @@ class Office:
         "BEIJING": 59
     }
 
-    officeToState = {
+    office_to_state = {
         "BRASILIA": "Distrito Federal",
         "RIO DE JANEIRO": "RIO DE JANEIRO",
         "CANBERRA": "AUSTRALIAN CAPITAL TERRITORY",
@@ -19,7 +19,7 @@ class Office:
         "BEIJING": "BEIJING"
     }
 
-    officeToStateId = {
+    office_to_state_id = {
         "BRASILIA": 330029,
         "RIO DE JANEIRO": 330041,
         "CANBERRA": 3358,
@@ -29,7 +29,7 @@ class Office:
         "BEIJING": 3643
     }
 
-    officeToLongitud = {
+    office_to_longitud = {
         "BRASILIA": -47.883199,
         "RIO DE JANEIRO": -43.174081,
         "CANBERRA": 149.1143319,
@@ -39,7 +39,7 @@ class Office:
         "BEIJING": 116.458656
     }
 
-    officeToLatitud = {
+    office_to_latitud = {
         "BRASILIA": -15.815721,
         "RIO DE JANEIRO": -22.964465,
         "CANBERRA": -35.3040023,
@@ -49,7 +49,7 @@ class Office:
         "BEIJING": 39.944392
     }
 
-    officeToCalle = {
+    office_to_calle = {
         "BRASILIA": "Av. das Nacóes",
         "RIO DE JANEIRO": "Edificio ABC - Av. Atlântica, 5o andar",
         "CANBERRA": "Perth Avenue",
@@ -59,7 +59,7 @@ class Office:
         "BEIJING": "San Li Tun Dong Wu Jie"
     }
 
-    officeToTelefono = {
+    office_to_telefono = {
         "BRASILIA": "55-613204-5200",
         "RIO DE JANEIRO": "-55213262-3200",
         "CANBERRA": "-6126273-3963",
@@ -69,8 +69,8 @@ class Office:
         "BEIJING": "-8610 6532-2070"
     }
 
-    def __init__(self, officeName=None):
-        if officeName is None:
+    def __init__(self, office_name=None):
+        if office_name is None:
             self.cat_office_id = 223
             self.var_cad_num_interior = ""
             self.var_id_entidad_federativa = 3380
@@ -92,15 +92,15 @@ class Office:
             self.var_cad_num_telefono = "00431310738335"
             self.var_num_latitud = 48.2127274675
         else:
-            self.cat_office_id = self.officeToId.get(officeName)
-            self.var_id_entidad_federativa = self.officeToStateId.get(officeName)
-            self.var_id_oficina = self.officeToId.get(officeName)
-            self.var_cad_oficina = officeName
-            self.var_num_longitud = self.officeToLongitud.get(officeName)
-            self.var_cad_calle = self.officeToCalle.get(officeName)
-            self.var_cad_entidad_federativa = self.officeToState.get(officeName)
-            self.var_cad_num_telefono = self.officeToTelefono.get(officeName)
-            self.var_num_latitud = self.officeToLatitud.get(officeName)
+            self.cat_office_id = self.office_to_id.get(office_name)
+            self.var_id_entidad_federativa = self.office_to_state_id.get(office_name)
+            self.var_id_oficina = self.office_to_id.get(office_name)
+            self.var_cad_oficina = office_name
+            self.var_num_longitud = self.office_to_longitud.get(office_name)
+            self.var_cad_calle = self.office_to_calle.get(office_name)
+            self.var_cad_entidad_federativa = self.office_to_state.get(office_name)
+            self.var_cad_num_telefono = self.office_to_telefono.get(office_name)
+            self.var_num_latitud = self.office_to_latitud.get(office_name)
             # Set default values for other attributes
             self.var_cad_num_interior = ""
             self.var_cad_localidad = None
