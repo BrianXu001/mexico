@@ -2,13 +2,15 @@ import base64
 import json
 import random
 import time
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Dict, List, Optional, Union
 import requests
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from email.mime.application import MIMEApplication
 import smtplib
+
+from urllib.parse import quote
 
 from entities.Country import Country
 from entities.State import State
@@ -245,6 +247,7 @@ class MexicoClient:
             return 300
 
     def get_save_data_request1(self) -> Dict:
+
         save_data = {
             "id": None,
             "origin": 1,
@@ -511,21 +514,31 @@ class MexicoClient:
         }
 
     def get_office_config_data1(self, office_id: int) -> Dict:
-        url = "https://citasapi.sre.gob.mx/api/console/office-preferences"
-        request_info = Utils.crypto_js_encrypt(json.dumps(self.gen_office_info(office_id)), self.key)
-        params = {"encrypt": request_info}
+        while True:
+            try:
+                url = "https://citasapi.sre.gob.mx/api/console/office-preferences"
+                request_info = Utils.crypto_js_encrypt(json.dumps(self.gen_office_info(office_id)), self.key)
+                params = {"encrypt": request_info}
 
-        response = requests.post(
-            url,
-            headers=self.get_headers_with_auth(),
-            json=params
-        )
+                response = requests.post(
+                    url,
+                    headers=self.get_headers_with_auth(),
+                    json=params
+                )
 
-        response_content = response.text
-        decrypted_content = Utils.crypto_js_decrypt(response_content, self.key)
-        response_json = json.loads(decrypted_content)
-        print(f"getOfficePreference: {response_json}")
-        return response_json.get("office_preferences", {})
+                response_content = response.text
+                decrypted_content = Utils.crypto_js_decrypt(response_content, self.key)
+                response_json = json.loads(decrypted_content)
+                print(f"getOfficePreference: {response_json}")
+                if "success" in response_json and response_json.get("success"):
+                    if "office_preferences" in response_json:
+                        return response_json.get("office_preferences")
+                print("try [get_office_config_data1] again")
+                time.sleep(3)
+            except Exception as e:
+                print(e)
+                print("try [get_office_config_data1] again")
+                time.sleep(3)
 
     def gen_office_info(self, office_id: int) -> Dict:
         return {
@@ -534,25 +547,47 @@ class MexicoClient:
         }
 
     def get_set_temp_formalities_console(self) -> Dict:
-        return self.get_general_response(self.person.dst_office.cat_office_id, "")
+        while True:
+            try:
+                request_info = Utils.crypto_js_encrypt(self.gen_general_info(self.person.dst_office.cat_office_id), self.key)
+                params = {"encrypt": request_info}
 
-    def get_general_response(self, office_id: int, thread_info: str) -> Dict:
-        try:
-            request_info = Utils.crypto_js_encrypt(self.gen_general_info(office_id), self.key)
-            params = {"encrypt": request_info}
+                response = requests.post(
+                    self.general_url,
+                    headers=self.get_headers_with_auth(),
+                    json=params
+                )
 
-            response = requests.post(
-                self.general_url,
-                headers=self.get_headers_with_auth(),
-                json=params
-            )
+                response_content = response.text
+                decrypted_content = Utils.crypto_js_decrypt(response_content, self.key)
+                response_json = json.loads(decrypted_content)
+                print(f"get_general_response:{response_json}")
+                return response_json
+            except Exception as e:
+                print(f"{datetime.now().strftime('%Y-%m-%d %H:%M:%S:%f')}getGeneralResponse error==> {e}")
+                print("try [get_general_response] again")
+                time.sleep(3)
 
-            response_content = response.text
-            decrypted_content = Utils.crypto_js_decrypt(response_content, self.key)
-            return json.loads(decrypted_content)
-        except Exception as e:
-            print(f"{thread_info}{datetime.now().strftime('%Y-%m-%d %H:%M:%S:%f')}getGeneralResponse error==> {e}")
-            return {}
+    # def get_general_response(self, office_id: int, thread_info: str) -> Dict:
+    #     while True:
+    #         try:
+    #             request_info = Utils.crypto_js_encrypt(self.gen_general_info(office_id), self.key)
+    #             params = {"encrypt": request_info}
+    #
+    #             response = requests.post(
+    #                 self.general_url,
+    #                 headers=self.get_headers_with_auth(),
+    #                 json=params
+    #             )
+    #
+    #             response_content = response.text
+    #             decrypted_content = Utils.crypto_js_decrypt(response_content, self.key)
+    #             response_json = json.loads(decrypted_content)
+    #             print(f"get_general_response:{response_json}")
+    #             return response_json
+    #         except Exception as e:
+    #             print(f"{thread_info}{datetime.now().strftime('%Y-%m-%d %H:%M:%S:%f')}getGeneralResponse error==> {e}")
+    #             print("try [get_general_response] again")
 
     def send_email(self, subject: str, text: str) -> None:
         if self.send_email_count <= 1:
@@ -706,7 +741,7 @@ class MexicoClient:
             for procedure_group in available_procedures:
                 for procedure in procedure_group:
                     cat_procedure_name = procedure["cat_procedure_name"].strip().lower()
-                    cat_procedure_type_name = procedure["cat_procedure_type_name"].strip().lower()
+                    cat_procedure_type_name = "None" if procedure["cat_procedure_type_name"] is None else procedure["cat_procedure_type_name"].strip().lower()
 
                     if "visas" in cat_procedure_name:
                         print(f"cat_procedure_type_name: {cat_procedure_type_name}")
@@ -714,7 +749,7 @@ class MexicoClient:
                             find_sin = True
                         if "con" in cat_procedure_type_name:
                             find_con = True
-                        if cat_procedure_type_name is None or cat_procedure_type_name == "null":
+                        if cat_procedure_type_name is None or cat_procedure_type_name == "None":
                             find_sin = True
                             find_con = True
 
@@ -727,45 +762,195 @@ class MexicoClient:
             else:
                 return 0
         except Exception as e:
+            print("check_visas_with_auth_by_error_code error!!!")
             return 0
 
     def save_data1(self):
-        try:
-            request_info = Utils.crypto_js_encrypt(json.dumps(self.get_save_data_request1()), self.key)
-            params = {
-                "encrypt": request_info
+        while True:
+            try:
+                request_info = Utils.crypto_js_encrypt(json.dumps(self.get_save_data_request1()), self.key)
+                params = {
+                    "encrypt": request_info
+                }
+                response = requests.post(
+                    self.save_data_url,
+                    headers=self.get_headers_with_auth(),
+                    json=params
+                )
+                response_content = response.content
+                decrypted_content = Utils.crypto_js_decrypt(response_content, self.key)
+                print(f"save1_response: {decrypted_content}")
+                if not decrypted_content:
+                    print("save_data1 empty response!")
+                    time.sleep(3)
+                    continue
+
+                response_json = json.loads(decrypted_content)
+                if "error" in response_json and response_json["error"] == "Unauthenticated":
+                    return 2
+                if "success" in response_json and response_json["success"]:
+                    print("got save_data_right!!!")
+                    self.traking_id = response_json["id"]
+                    print(f"trakingId1: {self.traking_id}")
+                    return 1
+
+            except Exception as e:
+                print("==save_data1 error==>")
+                print(e)
+                print("try [save_data1] again")
+                time.sleep(3)
+
+    def get_date_data_with_office_id_and_formalitites_type(self, office_id: int, formalitites_type):
+        # formalitites_type: sin, con
+        date_data = {
+            "cat_office_id": office_id,
+            "pcm_event_id": None,  # Equivalent to JSONNull.getInstance()
+        }
+        if formalitites_type == "sin":
+            procedure = {
+                "cat_procedure_id": 31,
+                "cat_procedure_type_id": 10,
+                "cat_procedure_subtype_id": 17,
+                "cat_procedure_name": "Visas",
+                "cat_procedure_type_name": "Sin permiso del INM",
+                "cat_procedure_subtype_name": "Visitante sin permiso para realizar actividades remuneradas"
             }
-            response = requests.post(
-                self.save_data_url,
-                headers=self.get_headers_with_auth(),
-                json=params
-            )
-            response_content = response.content
-            decrypted_content = Utils.crypto_js_decrypt(response_content, self.key)
-            print(f"save1_response: {decrypted_content}")
-            if not decrypted_content:
-                print("save_data1 empty response!")
-                return -1
+        else:
+            procedure = {
+                "cat_procedure_id": 31,
+                "cat_procedure_type_id": 11,
+                "cat_procedure_subtype_id": None,
+                "cat_procedure_name": "Visas",
+                "cat_procedure_type_name": "Con permiso del INM (Validación vía servicio web con el INM)",
+                "cat_procedure_subtype_name": None
+            }
 
+        date_data["procedures"] = [procedure]  # Equivalent to JSONArray with one element
+        date_data["amountFormaliti"] = 1
+
+        return date_data
+
+    def get_date_data(self):
+        date_data = {
+            "cat_office_id": self.person.dst_office.cat_office_id,
+            "pcm_event_id": None,  # Equivalent to JSONNull.getInstance()
+        }
+
+        procedure = {
+            "cat_procedure_id": self.person.formalities.formalitites_id,
+            "cat_procedure_type_id": self.person.formalities.formalitites_type_id,
+            "cat_procedure_subtype_id": None if not self.person.formalities.formalitites_subtype_id else self.person.formalities.formalitites_subtype_id,
+            "cat_procedure_name": self.person.formalities.formalitites_name,
+            "cat_procedure_type_name": self.person.formalities.formalitites_type_name,
+            "cat_procedure_subtype_name": None if not self.person.formalities.formalitites_subtype_name else self.person.formalities.formalitites_subtype_name
+        }
+
+        date_data["procedures"] = [procedure]  # Equivalent to JSONArray with one element
+        date_data["amountFormaliti"] = 1
+
+        return date_data
+
+    def gen_office_event_request_info_with_recaptcha_code(self, recaptcha_code: str, office_id: int, formalitites_type) -> str:
+        # Create date objects
+        now = datetime.now()
+        date_90_days_later = now + timedelta(days=90)
+
+        # Format dates as 'YYYY-MM-DD'
+        start_date = now.strftime("%Y-%m-%d")
+        end_date = date_90_days_later.strftime("%Y-%m-%d")
+
+        api_key = "M5hxYq16KRyKfGHSlKzf4d7I92SUwBA02s6fxZg4YGkgsT4sEm2kME5L1alrpB8LuVxjawsGvojISFpRzZGjcDA8ELk9a1xTJKUk"
+
+        # Create the JSON data structure
+        json_data = {
+            "currentView": "dayGridMonth",
+            "interval": {"startDate": start_date,"endDate": end_date},
+            "dateData": self.get_date_data_with_office_id_and_formalitites_type(office_id, formalitites_type),
+            "cat_system_id": "1",
+            "procces_id": self.traking_id,
+            "captcha_value": recaptcha_code,
+            "usr": self.hash_id,
+            "people_total": None,  # Equivalent to JSONNull.getInstance()
+            "api_key": api_key
+        }
+
+        return json.dumps(json_data)
+
+    def valid_recaptcha(self, recaptcha_code):
+        url = "https://citasapi.sre.gob.mx/api/appointment/v1/validate-captcha"
+        # Create the payload
+        user_info = {"captcha": recaptcha_code}
+        user_info_enc = Utils.crypto_js_encrypt(json.dumps(user_info), self.key)  # You'll need to implement the encrypt function
+        # Prepare request parameters
+        params = {"encrypt": user_info_enc}
+        try:
+            # Make the POST request with headers (you'll need to implement get_headers_with_auth)
+            response = requests.post(url, headers=self.get_headers_with_auth(), json=params)
+            decrypted_content = Utils.crypto_js_decrypt(response.text, self.key)
             response_json = json.loads(decrypted_content)
-            if "error" in response_json and response_json["error"] == "Unauthenticated":
-                return 2
-            if "success" in response_json and response_json["success"]:
-                print("got save_data_right!!!")
 
-            if "status" in response_json and not response_json["status"]:
-                print(f"save_data1 responseJson: {response_json}")
-                return -1
-
-            self.traking_id = response_json["id"]
-            print(f"trakingId1: {self.traking_id}")
-            return 1
+            print(f"valid_recaptcha response: {response_json}")
+            return response_json
 
         except Exception as e:
-            print("==save_data1 error==>")
-            import traceback
-            traceback.print_exc()
-            return -1
+            print("valid recaptcha error!")
+            print(e)
+            return {}
+
+    def get_office_event_with_office_id_and_formalitites_type(self, office_id: int, formalitites_type) -> bool:
+        # print(f"{thread_info}{formatter.format(datetime.now())}_getOfficeEventResponse")
+        # date_list = []
+        while True:
+            try:
+                recaptcha_code = self.get_recaptcha_code(self.user_id)
+                print(datetime.now(), f"recaptcha_code:{recaptcha_code}")
+                if not recaptcha_code:
+                    time.sleep(5)
+                    continue
+                valid_response = self.valid_recaptcha(recaptcha_code)
+                if "error" not in valid_response or str(valid_response["error"]).lower() != "ok":
+                    continue
+
+                request_info = self.gen_office_event_request_info_with_recaptcha_code(recaptcha_code, office_id, formalitites_type)
+                request_info = Utils.crypto_js_encrypt(request_info, self.key)
+                encrypted_params = quote(request_info, encoding="utf-8")
+                url = f"{self.office_event_prefix_url}encryptParams={encrypted_params}"
+                print(url)
+                response = requests.get(url, headers=self.get_headers_with_auth())
+
+                response_content = response.content
+                print(f"responseContent:{response_content}")
+
+                if not response_content:
+                    print("empty response")
+                    return False
+
+                decrypted_content = Utils.crypto_js_decrypt(response_content, self.key)
+
+                print(f"check response:{decrypted_content}")
+                response_json = json.loads(decrypted_content)
+
+                office_events = response_json.get("events", [])
+                events = json.loads(json.dumps(office_events))  # Convert to ensure it's a list
+                print("events:", events)
+                if events and events[0] != "null":
+                    try:
+                        # Convert to list of dicts for sorting
+                        json_list = [event for event in events if isinstance(event, dict)]
+                        # Sort by availables_by_day in descending order
+                        json_list.sort(key=lambda x: x.get("availables_by_day", 0), reverse=True)
+                        for item in json_list:
+                            self.events.append(item.get("date"))
+                        return True
+                    except Exception as e:
+                        print(f"{datetime.now()}==getDateError1==>{events}")
+                        return False
+
+            except Exception as e:
+                print(e)
+                return False
+
+        return False
 
 
 if __name__ == "__main__":

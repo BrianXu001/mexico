@@ -67,52 +67,61 @@ class Person:
         self.emergency_person = EmergencyPerson(emergency_name, emergency_first_name, emergency_phone,
                                                emergency_cellphone_format_international)
 
-    def _init_from_state_and_formalities(self, state, formalitites_type):
-        print("_init_from_state_and_formalities")
-        state_lower = state.lower()
-        if state_lower == "shanghai":
-            self.dst_state = State("Shanghai")
-            self.dst_office = Office("SHANGHAI")
-            self.from_state = State("Shanghai")
-        elif state_lower == "guangzhou":
-            self.dst_state = State("Guangzhou")
+    def _init_from_state_and_formalities(self, office_id, formalitites_type):
+        print("_init_from_state_and_formalities: ", str(office_id) + str(formalitites_type))
+        if office_id == 246:
+            self.dstS_state = State("Guangzhou")
             self.dst_office = Office("GUANGZHOU")
-            self.from_state = State("Guangzhou")
-        elif state_lower == "beijing":
+            self.dst_country = Country("China")
+        elif office_id == 59:
             self.dst_state = State("Beijing")
             self.dst_office = Office("BEIJING")
-            self.from_state = State("Beijing")
+            self.dst_country = Country("China")
+        elif office_id == 164:
+            self.dst_state = State("Shanghai")
+            self.dst_office = Office("SHANGHAI")
+            self.dst_country = Country("China")
+        elif office_id == 223:
+            self.dst_state = State("Wien")
+            self.dst_office = Office("AUSTRIA")
+            self.dst_country = Country("Austria")
+        elif office_id == 74:
+            self.dst_state = State("Australian Capital Territory")
+            self.dst_office = Office("CANBERRA")
+            self.dst_country = Country("Australia")
+        elif office_id == 144:
+            self.dst_state = State("Rio de Janeiro")
+            self.dst_office = Office("RIO DE JANEIRO")
+            self.dst_country = Country("Brasil")
         else:
-            print(state)
-            print("Please input right state(shanghai/guangzhou/beijing)!")
-            exit(1)
+            print("can not find office_id:", office_id)
+            raise Exception("can not find office_id")
 
         formalitites_type_lower = formalitites_type.lower()
         if formalitites_type_lower == "sin":
             self.formalities = Formalities("Visas", "Sin permiso del INM",
                                            "Visitante sin permiso para realizar actividades remuneradas", "EJ9023801",
                                            "")
-        elif formalitites_type_lower == "con":
+        else :
             self.formalities = Formalities("Visas", "Con permiso del INM (Validación vía servicio web con el INM)", "",
                                            "EJ9023801", "6288241")
-        else:
-            print("Please input right formalitites_type(sin/con)!")
-            exit(1)
 
-        self.dst_country = Country("China")
         self.nationality = "China"
         self.country_of_birth = "China"
-        self.state_of_birth = "Beijing"
+        self.state_of_birth = "Guangzhou"
+        self.municipality_of_birth = ""
         self.from_country = Country("China")
-        self.full_name = "JAMES XU"
+        self.from_state = State("Guangzhou")
+        self.full_name = "JAMES LI"
         self.name = "JAMES"
-        self.first_name = "XU"
+        self.first_name = "LI"
         self.birthdate = "1993-09-12"
         self.age = self._calculate_age(self.birthdate)
-        self.civil_state = 1
-        self.cat_gender_id = 2
-        self.direction = "CHAOYANG JIUXIANQIAO"
-        self.emergency_person = EmergencyPerson("XIAOKAI", "XU", "185 1958 2008", "+86 185 1958 2008")
+        self.civil_state = 1  # 婚姻状态 1:未婚, 2:已婚
+        self.cat_gender_id = 2  # 性别 1:女性, 2:男性
+        self.direction = "GUANGDONG GUANGZHOU BAIYUN"
+        self.emergency_person = EmergencyPerson("YINAN", "LI", "185 1958 2008", "+86 185 1958 2008")
+
 
     def _init_from_json(self, person_json):
         print("_init_from_json")
@@ -135,7 +144,7 @@ class Person:
                                        passport_number, nud)
         self.name = person_json.get("name")
         self.first_name = person_json.get("firstName")
-        self.full_name = f"{self.name} {self.firstName} "
+        self.full_name = f"{self.name} {self.first_name} "
         self.birthdate = person_json.get("birthdate")
         self.age = self._calculate_age(self.birthdate)
         self.civil_state = person_json.get("civilState")
@@ -168,7 +177,7 @@ class Person:
 
     def _init_from_office_id(self, office_id: int):
         # # GUANGZHOU:246, BEIJING: 59, AUSTRIA:223, CANBERRA:74, RIO DE JANEIRO: 144, SHANGHAI: 164,
-        print("__init_from_office_id")
+        print("__init_from_office_id:", str(office_id))
         if office_id == 246:
             self.dstS_state = State("Guangzhou")
             self.dst_office = Office("GUANGZHOU")
@@ -203,6 +212,7 @@ class Person:
         self.nationality = "China"
         self.country_of_birth = "China"
         self.state_of_birth = "Guangzhou"
+        self.municipality_of_birth = ""
         self.from_country = Country("China")
         self.from_state = State("Guangzhou")
         self.full_name = "JAMES LI"
