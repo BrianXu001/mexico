@@ -533,6 +533,8 @@ class MexicoClient:
                 if "success" in response_json and response_json.get("success"):
                     if "office_preferences" in response_json:
                         return response_json.get("office_preferences")
+                if "Unauthenticated" in  decrypted_content:
+                    return {}
                 print("try [get_office_config_data1] again")
                 time.sleep(3)
             except Exception as e:

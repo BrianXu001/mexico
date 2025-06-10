@@ -30,6 +30,32 @@ class Check:
         self.register_signal_type = register_signal_type
         self.person = Person(office_id)
 
+    def check_citas_homepage_get(self):
+        chrome_options = Options()
+        chrome_options.add_argument("--headless")
+        # chrome_options.add_argument("--no-sandbox")
+        chrome_options.add_argument("--disable-gpu")
+        chrome_options.add_argument("--password-store=basic")  # 禁用密钥环
+        chrome_options.add_argument("--no-first-run")
+        chrome_options.add_argument("--start-maximized")
+        driver = uc.Chrome(options=chrome_options, verify=False)
+
+        while True:
+            try:
+                driver.get("https://citas.sre.gob.mx/")
+                driver.maximize_window()
+                login_link = WebDriverWait(driver, 30).until(
+                    EC.element_to_be_clickable((By.XPATH, "//button[contains(text(), 'Oficinas Consulares')]"))
+                )
+                login_link.click()
+                break
+            except Exception as e:
+                pass
+                print("Sign in按钮未能获取")
+                time.sleep(3)
+        print("check citas homepage success!")
+        driver.quit()
+
     def check_citas_homepage(self):
         chrome_options = Options()
         chrome_options.add_argument("--headless")
@@ -87,7 +113,7 @@ class Check:
 
             client = MexicoClient(email, password, self.person)
             print("check_citas_homepage..")
-            self.check_citas_homepage()
+            # self.check_citas_homepage()
             while True:
                 error_code1 = client.login_with_recaptcha_with_error_code()
                 if error_code1 in [101, 102, 104, 105, 200]:
