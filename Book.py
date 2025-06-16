@@ -4,8 +4,9 @@ import socket
 import time
 from datetime import datetime, time as dt_time
 import redis
-
+import argparse
 import pytz
+
 from entities.Person import Person
 from client.MexicoClient import MexicoClient
 
@@ -19,6 +20,8 @@ print("install ChromeDriverManager")
 ChromeDriverManager().install()
 import ssl
 ssl._create_default_https_context = ssl._create_unverified_context
+
+beijing_tz = pytz.timezone('Asia/Shanghai')
 
 
 class Book:
@@ -53,10 +56,26 @@ class Book:
         print("check citas homepage success!")
         driver.quit()
 
-    def book_normal(self, email_type, specify_time):
-        task_type = "book"
+    def book_normal(self, specify_time, buffer_time):
+        task_type = "book_normal"
+        spl = specify_time.split(":")
+        target_hour = int(spl[0])
+        target_minute = int(spl[1])
+        target_second = int(spl[2])
+
+        extra_time = random.randint(0, buffer_time)
+        print(extra_time)
+        total_second = target_minute * 60 + target_second + extra_time
+        target_minute = (total_second % 3600 // 60)
+        target_second = (total_second % 3600 % 60)
+        print("target_hour:", target_hour)
+        print("target_minute:", target_minute)
+        print("target_second:", target_second)
+        now = datetime.now(beijing_tz)
+        target_time = now.replace(hour=target_hour, minute=target_minute, second=target_second, microsecond=0)
+        print("target_time:", target_time)
+
         registered_account_list = "0_check_registered_account"
-        used_account = "1_used_account"
 
         print(f"{datetime.now().strftime('%Y-%m-%d %H:%M:%S:%f')} start task: {task_type}")
         ip_address = ""
@@ -145,9 +164,9 @@ class Book:
                         break
                     begin_time = time.time()
                 # check redis
-                if (redis_client.llen(f"{client.CHECK_LIST}_real") > 0):
+                if redis_client.llen(f"{client.CHECK_LIST}_real") > 0:
                     print(f"{datetime.now().strftime('%Y-%m-%d %H:%M:%S:%f')} find check visas!")
-                elif (datetime.now > specify_time):
+                elif datetime.now(beijing_tz) > target_time:
                     print(f"{datetime.now().strftime('%Y-%m-%d %H:%M:%S:%f')} agreed time!")
                 else:
                     print(f"当前时间 {datetime.now()} {count_check}")
@@ -156,9 +175,16 @@ class Book:
                 # start book
                 client.do_book()
                 break
-            redis_client.rpush(used_account, registered_account)
+
             break
 
 
 if __name__ == "__main__":
-    pass
+    parser = argparse.ArgumentParser(description="输入gmail账号、密码")
+    parser.add_argument("arg1", help="specify_time")
+    parser.add_argument("arg2", help="buffer_time/second")
+    args = parser.parse_args()
+    specify_time = args.arg1
+    buffer_time = args.arg2
+    book = Book()
+    book.book_normal(specify_time, buffer_time)
