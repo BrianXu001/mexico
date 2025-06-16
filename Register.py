@@ -55,6 +55,8 @@ class Register:
         self.redis_account_raw_list += "_raw_account"
         self.redis_registered_account_list += "_registered_account"
 
+        print("check_citas_homepage")
+        self.check_citas_homepage()
 
     def generate_recaptcha_url(self, user_name: str) -> str:
         try:
@@ -276,15 +278,8 @@ class Register:
         # guangzhou
         officeId = 246
         stateId = 329198
-        # shanghai
-        # officeId = 164
-        # stateId = 3667
-        # beijing
-        # officeId = 59
-        # stateId = 3643
-        # TODO 首先访问主页
-        print("check_citas_homepage")
-        self.check_citas_homepage()
+        # shanghai: officeId = 164, stateId = 3667
+        # beijing: officeId = 59, stateId = 3643
         return self.register_with_err_code(name, firstName, username, password, officeId, stateId, domain, wordKey)
 
     def motivate_by_eyj_and_token(self, eyJ, token, max_retries=99):

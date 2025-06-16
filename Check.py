@@ -29,32 +29,8 @@ class Check:
         self.reset_num = reset_num
         self.register_signal_type = register_signal_type
         self.person = Person(office_id)
-
-    def check_citas_homepage_get(self):
-        chrome_options = Options()
-        chrome_options.add_argument("--headless")
-        # chrome_options.add_argument("--no-sandbox")
-        chrome_options.add_argument("--disable-gpu")
-        chrome_options.add_argument("--password-store=basic")  # 禁用密钥环
-        chrome_options.add_argument("--no-first-run")
-        chrome_options.add_argument("--start-maximized")
-        driver = uc.Chrome(options=chrome_options, verify=False)
-
-        while True:
-            try:
-                driver.get("https://citas.sre.gob.mx/")
-                driver.maximize_window()
-                login_link = WebDriverWait(driver, 30).until(
-                    EC.element_to_be_clickable((By.XPATH, "//button[contains(text(), 'Oficinas Consulares')]"))
-                )
-                login_link.click()
-                break
-            except Exception as e:
-                pass
-                print("Sign in按钮未能获取")
-                time.sleep(3)
-        print("check citas homepage success!")
-        driver.quit()
+        print("check_citas_homepage..")
+        self.check_citas_homepage()
 
     def check_citas_homepage(self):
         chrome_options = Options()
@@ -92,7 +68,7 @@ class Check:
         used_account = "1_used_account"
 
         # Connect to Redis
-        redis_conn = redis.Redis( host='47.254.14.124', port=6379, db=0, password='2023@mexico')
+        redis_conn = redis.Redis(host='47.254.14.124', port=6379, db=0, password='2023@mexico')
         redis_conn.select(0)
         while True:
             print("Reading account.", datetime.now())
@@ -112,8 +88,6 @@ class Check:
             password = account_info["password"]
 
             client = MexicoClient(email, password, self.person)
-            print("check_citas_homepage..")
-            # self.check_citas_homepage()
             while True:
                 error_code1 = client.login_with_recaptcha_with_error_code()
                 if error_code1 in [101, 102, 104, 105, 200]:
@@ -121,12 +95,13 @@ class Check:
                 time.sleep(3)
             if error_code1 in [101, 102, 104, 105]:
                 print("account error, choose new account!")
-                time.sleep(1)
+                time.sleep(3)
                 continue
 
             verify_response = client.verify_user()
             if verify_response.get("success", True) is False:
                 print(f"verifyResponse: {verify_response}")
+                time.sleep(5)
                 continue
 
             check_count = 0
@@ -233,8 +208,6 @@ class Check:
             # GUANGZHOU:246, BEIJING: 59, AUSTRIA:223, CANBERRA:74, RIO DE JANEIRO: 144, SHANGHAI: 164,
             person = Person(144)
             client = MexicoClient(email, password, person)
-            print("check_citas_homepage..")
-            self.check_citas_homepage()
             while True:
                 error_code1 = client.login_with_recaptcha_with_error_code()
                 if error_code1 in [101, 102, 104, 105, 200]:
@@ -297,12 +270,12 @@ class Check:
                 elif check_code == 1:
                     print("Found visas[sin][con]!!")
                     real_found = False
-                    if client.get_office_event_with_office_id_and_formalitites_type(self.office_id, "con"):
+                    if len(client.get_office_event_with_office_id_and_formalitites_type(self.office_id, "con")) > 0:
                         real_found = True
                         redis_conn.rpush(f"{self.person.dst_office.var_cad_oficina}_check_visas_con_real", "find save_data")
                         redis_conn.rpush(f"{self.person.dst_office.var_cad_oficina}_check_visas_con", "find save_data")
                         print(f"墨西哥【{self.person.dst_office.var_cad_oficina}】" + "[con]放号了！")
-                    if client.get_office_event_with_office_id_and_formalitites_type(self.office_id, "sin"):
+                    if len(client.get_office_event_with_office_id_and_formalitites_type(self.office_id, "sin")) > 0:
                         real_found = True
                         redis_conn.rpush(f"{self.person.dst_office.var_cad_oficina}_check_visas_sin_real", "find save_data")
                         redis_conn.rpush(f"{self.person.dst_office.var_cad_oficina}_check_visas_sin", "find save_data")
@@ -312,7 +285,7 @@ class Check:
                 elif check_code == 2:
                     print("Found visas[sin]!!")
                     real_found = False
-                    if client.get_office_event_with_office_id_and_formalitites_type(self.office_id, "sin"):
+                    if len(client.get_office_event_with_office_id_and_formalitites_type(self.office_id, "sin")) > 0:
                         real_found = True
                         redis_conn.rpush(f"{self.person.dst_office.var_cad_oficina}_check_visas_sin_real", "find save_data")
                         redis_conn.rpush(f"{self.person.dst_office.var_cad_oficina}_check_visas_sin", "find save_data")
@@ -322,7 +295,7 @@ class Check:
                 elif check_code == 3:
                     print("Found visas[con]!!")
                     real_found = False
-                    if client.get_office_event_with_office_id_and_formalitites_type(self.office_id, "con"):
+                    if len(client.get_office_event_with_office_id_and_formalitites_type(self.office_id, "con")) > 0:
                         real_found = True
                         redis_conn.rpush(f"{self.person.dst_office.var_cad_oficina}_check_visas_con_real", "find save_data")
                         redis_conn.rpush(f"{self.person.dst_office.var_cad_oficina}_check_visas_con", "find save_data")

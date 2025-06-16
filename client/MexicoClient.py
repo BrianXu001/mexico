@@ -11,12 +11,15 @@ from email.mime.application import MIMEApplication
 import smtplib
 
 from urllib.parse import quote
+import socket
 
 from entities.Country import Country
 from entities.State import State
 
 from utils.Utils import Utils
 from utils.Recaptcha import Recaptcha
+
+import redis
 
 
 class MexicoClient:
@@ -68,6 +71,7 @@ class MexicoClient:
         self.office_event_prefix_url = "https://citasapi.sre.gob.mx/api/console/office-events?"
         self.office_day_event_prefix_url = "https://citasapi.sre.gob.mx/api/console/office-day-events?"
         self.save_appointment_url = "https://citasapi.sre.gob.mx/api/appointment/v1/save-appointment"
+        self.document_url = "https://citasapi.sre.gob.mx/api/appointment/v1/generate-documents"
 
     def get_headers(self) -> Dict[str, str]:
         return {
@@ -781,26 +785,29 @@ class MexicoClient:
                 )
                 response_content = response.content
                 decrypted_content = Utils.crypto_js_decrypt(response_content, self.key)
-                print(f"save1_response: {decrypted_content}")
+                print(f"{str(datetime.now())} save1_response: {decrypted_content}")
                 if not decrypted_content:
                     print("save_data1 empty response!")
-                    time.sleep(3)
+                    time.sleep(5)
                     continue
 
                 response_json = json.loads(decrypted_content)
                 if "error" in response_json and response_json["error"] == "Unauthenticated":
+                    print("账号异常")
                     return 2
                 if "success" in response_json and response_json["success"]:
                     print("got save_data_right!!!")
                     self.traking_id = response_json["id"]
                     print(f"trakingId1: {self.traking_id}")
                     return 1
+                print("try save_data1 again")
+                time.sleep(5)
 
             except Exception as e:
                 print("==save_data1 error==>")
                 print(e)
                 print("try [save_data1] again")
-                time.sleep(3)
+                time.sleep(5)
 
     def get_date_data_with_office_id_and_formalitites_type(self, office_id: int, formalitites_type):
         # formalitites_type: sin, con
@@ -899,7 +906,7 @@ class MexicoClient:
             print(e)
             return {}
 
-    def get_office_event_with_office_id_and_formalitites_type(self, office_id: int, formalitites_type) -> bool:
+    def get_office_event_with_office_id_and_formalitites_type(self, office_id: int, formalitites_type):
         # print(f"{thread_info}{formatter.format(datetime.now())}_getOfficeEventResponse")
         # date_list = []
         while True:
@@ -917,21 +924,17 @@ class MexicoClient:
                 request_info = Utils.crypto_js_encrypt(request_info, self.key)
                 encrypted_params = quote(request_info, encoding="utf-8")
                 url = f"{self.office_event_prefix_url}encryptParams={encrypted_params}"
-                print(url)
                 response = requests.get(url, headers=self.get_headers_with_auth())
-
                 response_content = response.content
                 print(f"responseContent:{response_content}")
 
                 if not response_content:
                     print("empty response")
-                    return False
+                    return []
 
                 decrypted_content = Utils.crypto_js_decrypt(response_content, self.key)
-
                 print(f"check response:{decrypted_content}")
                 response_json = json.loads(decrypted_content)
-
                 office_events = response_json.get("events", [])
                 events = json.loads(json.dumps(office_events))  # Convert to ensure it's a list
                 print("events:", events)
@@ -941,18 +944,896 @@ class MexicoClient:
                         json_list = [event for event in events if isinstance(event, dict)]
                         # Sort by availables_by_day in descending order
                         json_list.sort(key=lambda x: x.get("availables_by_day", 0), reverse=True)
-                        for item in json_list:
-                            self.events.append(item.get("date"))
-                        return True
+                        return json_list
                     except Exception as e:
-                        print(f"{datetime.now()}==getDateError1==>{events}")
-                        return False
+                        print(f"{datetime.now()}==getDateError1==>")
+                        return []
 
             except Exception as e:
                 print(e)
-                return False
+                return []
 
-        return False
+        return []
+
+    def get_date_data(self):
+        date_data = {
+            "cat_office_id": self.person.dst_office.cat_office_id,
+            "pcm_event_id": None,  # Equivalent to JSONNull.getInstance()
+
+            "procedures": [
+                {
+                    "cat_procedure_id": self.person.formalities.formalitites_id,
+                    "cat_procedure_type_id": self.person.formalities.formalitites_type_id,
+                    "cat_procedure_subtype_id": self.person.formalities.formalitites_subtype_id if self.person.formalities.formalitites_subtype_id else None,
+                    "cat_procedure_name": self.person.formalities.formalitites_name,
+                    "cat_procedure_type_name": self.person.formalities.formalitites_type_name,
+                    "cat_procedure_subtype_name": self.person.formalities.formalitites_subtype_name if self.person.formalities.formalitites_subtype_name else None
+                }
+            ],
+            "amountFormaliti": 1
+        }
+        return date_data
+
+    def gen_office_day_event_request_info_with_recaptcha_code(self, selected_date, recaptcha_code):
+        api_key = "M5hxYq16KRyKfGHSlKzf4d7I92SUwBA02s6fxZg4YGkgsT4sEm2kME5L1alrpB8LuVxjawsGvojISFpRzZGjcDA8ELk9a1xTJKUk"
+        request_info = {
+            "selectedDate": selected_date,
+            "dateData": self.get_date_data(),  # Assuming you have this function defined elsewhere
+            "cat_system_id": 1,
+            "captcha_value": recaptcha_code,
+            "usr": self.hash_id,  # Assuming this is part of a class
+            "procces_id": self.traking_id,  # Assuming this is part of a class
+            "api_key": api_key
+        }
+        return json.dumps(request_info)
+
+    def get_office_days(self,selected_date, recaptcha_code ):
+        request_info = self.gen_office_day_event_request_info_with_recaptcha_code(selected_date, recaptcha_code)
+        request_info = Utils.crypto_js_encrypt(request_info, self.key)
+        encrypted_params = quote(request_info, encoding="utf-8")
+        url = f"{self.office_event_prefix_url}encryptParams={encrypted_params}"
+        response = requests.get(url, headers=self.get_headers_with_auth())
+        response_content = response.content
+        print(f"responseContent:{response_content}")
+
+        if not response_content:
+            print("empty response")
+            return []
+
+        decrypted_content = Utils.crypto_js_decrypt(response_content, self.key)
+        print(f"check response:{decrypted_content}")
+        response_json = json.loads(decrypted_content)
+        return response_json
+
+    def get_days_with_selected_date(self, selected_date):
+        while True:
+            try:
+                recaptcha_code = self.get_recaptcha_code(self.user_id)
+                print(datetime.now(), f"recaptcha_code:{recaptcha_code}")
+                if not recaptcha_code:
+                    time.sleep(5)
+                    continue
+                valid_response = self.valid_recaptcha(recaptcha_code)
+                if "error" not in valid_response or str(valid_response["error"]).lower() != "ok":
+                    continue
+
+                dates = []
+                times = self.get_office_days(selected_date, recaptcha_code).get("events")
+
+
+                times_array = json.loads(times) if isinstance(times, str) else times
+                if isinstance(times_array, list) and times_array:
+                    print(f"{datetime.now().strftime('%Y-%m-%d %H:%M:%S')} getOfficeDayEventResponse==>{json.dumps(times_array)}")
+                    for item in times_array:
+                        if "0" in item:
+                            for key, value in item.items():
+                                dates.append(json.loads(value) if isinstance(value, str) else value)
+                        else:
+                            dates.append(item)
+                else:
+                    times_object = json.loads(times) if isinstance(times, str) else times
+                    print(f"{datetime.now().strftime('%Y-%m-%d %H:%M:%S')} getOfficeDayEventResponse==>{json.dumps(times_object)}")
+                    for key, value in times_object.items():
+                        dates.append(json.loads(value) if isinstance(value, str) else value)
+                return dates
+            except Exception as e:
+                print(e)
+                return []
+
+    def gen_date_object(self, date: dict) -> dict:
+        date_data = {}
+        try:
+            if date:  # Check if dictionary is not empty
+                # Copy all key-value pairs from input date
+                date_data.update(date)
+
+                # Add start and end times
+                date_data["start"] = f"{date['date']}T{date['initialTime']}"
+                date_data["end"] = f"{date['date']}T{date['endTime']}"
+
+        except Exception as e:
+            date_data = {}
+            # Assuming the first value in the dictionary contains the needed data
+            for entry_value in date.values():
+                if isinstance(entry_value, dict):
+                    temp_data = entry_value
+                else:
+                    try:
+                        temp_data = json.loads(entry_value)
+                    except:
+                        continue
+
+                # Copy all key-value pairs from temp_data
+                date_data.update(temp_data)
+
+                # Add start and end times
+                date_data["start"] = f"{temp_data['date']}T{temp_data['initialTime']}"
+                date_data["end"] = f"{temp_data['date']}T{temp_data['endTime']}"
+                break  # Only process first entry as per original Java code
+
+        return date_data
+
+    def get_date(self):
+        formalitites_type_name_simple = "sin" if "sin" in self.person.formalities.formalitites_type_name.lower() else "con"
+        events = self.get_office_event_with_office_id_and_formalitites_type(self.person.dst_office.cat_office_id, formalitites_type_name_simple)
+
+        if len(events) > 0:
+            days = self.get_days_with_selected_date(events[0])
+            if len(days) > 0:
+                date_wrap = self.gen_date_object(days[0])
+                return date_wrap
+        return {}
+
+    def get_process(self):
+        url = "https://citasapi.sre.gob.mx/api/appointment/v1/get-process"
+        data = {
+            "id": self.traking_id
+        }
+
+        while True:
+            try:
+                request_info = Utils.crypto_js_encrypt(json.dumps(data), self.key)
+                # Prepare request parameters
+                params = {
+                    "encrypt": request_info
+                }
+                response = requests.post(url, headers=self.get_headers_with_auth(), json=params)
+
+                response_content = response.text
+                decrypted_content = Utils.crypto_js_decrypt(response_content, self.key)
+                response_json = json.loads(decrypted_content)
+                if response_json.get("success", False):
+                    return response_json
+                else:
+                    print("get_process failed, sleep 3 seconds!")
+                    time.sleep(3)
+
+            except Exception as e:
+                print("==get_process error==>")
+                print(str(e))  # Print the actual error for debugging
+                print("get_process failed, sleep 3 seconds!")
+                time.sleep(3)
+
+    def gen_sub_data(self, t_id_tramite: str, t_cad_tramite: str,
+                     t_id_tipo_tramite: str, t_cad_tipo_tramite: str,
+                     t_id_subtipo_tramite: str, t_cad_subtipo_tramite: str,
+                     t_id_tipo_nacionalidad: str) -> dict:
+        data1 = {
+            "t_id_subtipo_tramite": None if not t_id_subtipo_tramite else t_id_subtipo_tramite,
+            "t_cad_subtipo_tramite": None if not t_cad_subtipo_tramite else t_cad_subtipo_tramite
+        }
+
+        tmp_array = [
+            self.gen_tramite_data(t_id_tramite, t_cad_tramite,
+                                  t_id_tipo_tramite, t_cad_tipo_tramite,
+                                  t_id_subtipo_tramite, t_cad_subtipo_tramite,
+                                  t_id_tipo_nacionalidad)
+        ]
+
+        data1["data"] = tmp_array
+        return data1
+
+    def gen_data_sin(self, t_id_tramite: str, t_cad_tramite: str,
+                     t_id_tipo_tramite: str, t_cad_tipo_tramite: str,
+                     t_id_tipo_nacionalidad: str) -> dict:
+        t_id_subtipo_tramite1 = "17"
+        t_cad_subtipo_tramite1 = "Visitante sin permiso para realizar actividades remuneradas"
+        t_id_subtipo_tramite2 = "20"
+        t_cad_subtipo_tramite2 = "Residente temporal"
+
+        data2 = {
+            "t_id_tipo_tramite": t_id_tipo_tramite,
+            "t_cad_tipo_tramite": t_cad_tipo_tramite
+        }
+
+        data = [
+            self.gen_sub_data(t_id_tramite, t_cad_tramite, t_id_tipo_tramite,
+                              t_cad_tipo_tramite, t_id_subtipo_tramite1,
+                              t_cad_subtipo_tramite1, t_id_tipo_nacionalidad),
+            self.gen_sub_data(t_id_tramite, t_cad_tramite, t_id_tipo_tramite,
+                              t_cad_tipo_tramite, t_id_subtipo_tramite2,
+                              t_cad_subtipo_tramite2, t_id_tipo_nacionalidad)
+        ]
+
+        data2["data"] = data
+
+        return data2
+
+    def gen_data_con(self, t_id_tramite: str, t_cad_tramite: str,
+                     t_id_tipo_tramite: str, t_cad_tipo_tramite: str,
+                     t_id_tipo_nacionalidad: str) -> dict:
+        t_id_subtipo_tramite1 = ""
+        t_cad_subtipo_tramite1 = ""
+
+        data2 = {
+            "t_id_tipo_tramite": t_id_tipo_tramite,
+            "t_cad_tipo_tramite": t_cad_tipo_tramite
+        }
+
+        data = [
+            self.gen_sub_data(t_id_tramite, t_cad_tramite,
+                              t_id_tipo_tramite, t_cad_tipo_tramite,
+                              t_id_subtipo_tramite1, t_cad_subtipo_tramite1,
+                              t_id_tipo_nacionalidad)
+        ]
+
+        data2["data"] = data
+
+        return data2
+
+    def get_visas_data(self, t_id_tramite: str, t_cad_tramite: str, t_id_tipo_nacionalidad: str) -> list:
+        data = []
+
+        t_id_tipo_tramite1 = "10"
+        t_cad_tipo_tramite1 = "Sin permiso del INM"
+        t_id_tipo_tramite2 = "11"
+        t_cad_tipo_tramite2 = "Con permiso del INM (Validación vía servicio web con el INM)"
+
+        tmp_data = self.gen_data_sin(t_id_tramite, t_cad_tramite,
+                                     t_id_tipo_tramite1, t_cad_tipo_tramite1,
+                                     t_id_tipo_nacionalidad)
+
+        tmp_data2 = self.gen_data_con(t_id_tramite, t_cad_tramite,
+                                      t_id_tipo_tramite2, t_cad_tipo_tramite2,
+                                      t_id_tipo_nacionalidad)
+
+        data.append(tmp_data)
+        data.append(tmp_data2)
+
+        return data
+
+    def get_persons_formalities_temp_data(self):
+        t_id_tramite = "31"
+        t_cad_tramite = "Visas"
+        t_id_tipo_nacionalidad = "2"
+
+        temp_data = {
+            "t_id_tramite": t_id_tramite,
+            "t_cad_tramite": t_cad_tramite,
+            "data": self.get_visas_data(t_id_tramite, t_cad_tramite, t_id_tipo_nacionalidad)
+        }
+
+        return temp_data
+
+    def get_persons_formalities_by_step2(self):
+        person_data = []
+        data = {
+            "id": None,
+            "formalitites_id": self.person.formalities.formalitites_id,
+            "formalitites_name": self.person.formalities.formalitites_name,
+            "formalitites_type_id": self.person.formalities.formalitites_type_id,
+            "formalitites_type_name": self.person.formalities.formalitites_type_name,
+            "formalitites_subtype_id": None if not self.person.formalities.formalitites_subtype_id else self.person.formalities.formalitites_subtype_id,
+            "formalitites_subtype_name": None if not self.person.formalities.formalitites_subtype_name else self.person.formalities.formalitites_subtype_name,
+            "passportNumber": None if not self.person.formalities.passportNumber else self.person.formalities.passportNumber,
+            "nud": None if not self.person.formalities.nud else self.person.formalities.nud,
+            "validity_id": None,
+            "validity_name": None,
+            "discount_id": None,
+            "discount_name": None,
+            "discount_formalitites_id": None,
+            "discount_formalitites_name": None,
+            "amount": None,
+            "coin_name": None,
+            "coin_id": None,
+            "document_formalitites_id": None,
+            "document_formalitites_name": None,
+            "temp_data": self.get_persons_formalities_temp_data()
+        }
+
+        person_data.append(data)
+        return person_data
+
+    def get_apmt_persons_select_tmp_formalities(self):
+        person_data = []
+        temp_data = self.get_persons_formalities_temp_data()
+        person_data.append(temp_data)
+        return person_data
+
+    def get_save_data_request2(self, d1):
+        # Assuming d1 is a dictionary parsed from JSON
+        data = d1["data"]
+        json_data = data["json"]
+
+        # Modify the json data
+        json_data["folioProcedureInitial"] = data["folioProcedureInitial"]
+        json_data["selectedForm"] = True
+        json_data["people"][0]["persons_formalities"] = self.get_persons_formalities_by_step2()
+        json_data["people"][0]["apmt_persons_select_tmp_formalities"] = self.get_apmt_persons_select_tmp_formalities()
+        json_data["step"] = 2
+        json_data["step_token"] = json_data["step_token"]
+        json_data["trakingId"] = self.traking_id
+        json_data["diffMin"] = d1["segundos"]
+
+        return json_data
+
+    def save_data2(self, d1: dict):
+        while True:
+            try:
+                # Prepare request data
+                request_data = self.get_save_data_request2(d1)
+                request_info = Utils.crypto_js_encrypt(json.dumps(request_data), self.key)
+                params = {"encrypt": request_info}
+                headers = self.get_headers_with_auth()
+
+                response = requests.post(
+                    self.save_data_url,
+                    headers=headers,
+                    json=params,
+                    timeout=10  # Added timeout for safety
+                )
+                decrypted_content = Utils.crypto_js_decrypt(response.text, self.key)
+                print(f"{str(datetime.now())} save2_response: {decrypted_content}")
+                if not decrypted_content:
+                    print("save_data2 empty response!")
+                    time.sleep(5)
+                    continue
+
+                response_json = json.loads(decrypted_content)
+                if "error" in response_json and response_json["error"] == "Unauthenticated":
+                    print("账号异常")
+                    return 2
+                if "success" in response_json and response_json["success"]:
+                    return 1
+                print("try save_data2 again")
+                time.sleep(5)
+
+            except Exception as e:
+                print("==save_data_2 error==>")
+                print(str(e))
+                time.sleep(5)
+
+    def get_apmt_persons_second_additional_3(self) -> dict:
+        person_data = {
+            "doc_complementario_id": None,
+            "doc_complementario_name": None,
+            "doc_probatorio_id": None,
+            "doc_probatorio_name": None,
+            "doc_nacionalidad_id": None,
+            "doc_nacionalidad_name": None,
+            "modelo_rubros_dinamico_doc_complementario": [],
+            "modelo_rubros_dinamico_doc_probatorio": [],
+            "modelo_rubros_dinamico_doc_nacionalidad": [],
+            "modelo_rubros_dinamico_doc_acta_extemporanea": [],
+            "name": None,
+            "firstName": None,
+            "lastName": None,
+            "birthdate": None,
+            "cat_apmt_gender_id": None,
+            "country_id": None,
+            "cat_nationality_id": None
+        }
+        return person_data
+
+    def get_value1_data(self) -> dict:
+        value_1_data = {
+            "id_doc_probatorio": 142,
+            "id_rubro": 36,
+            "cad_rubro": "Número",
+            "id_tipo_objeto": 9,
+            "cad_tipo": "number",
+            "num_longitud": 20,
+            "id_tipo_dato": 3,
+            "cad_tipo_dato": "integer",
+            "id_tipo_validacion": None,
+            "cad_tipo_validacion": None,
+            "b64_rubro": None
+        }
+        return value_1_data
+
+    def get_value2_data(self) -> dict:
+        value_2_data = {
+            "id_doc_probatorio": 142,
+            "id_rubro": 41,
+            "cad_rubro": "Fecha de expedición",
+            "id_tipo_objeto": 4,
+            "cad_tipo": "datetime-local",
+            "num_longitud": 10,
+            "id_tipo_dato": 2,
+            "cad_tipo_dato": "varchar",
+            "id_tipo_validacion": None,
+            "cad_tipo_validacion": None,
+            "b64_rubro": None
+        }
+        return value_2_data
+
+    def get_value3_data(self) -> dict:
+        value_3_data = {
+            "id_doc_probatorio": 142,
+            "id_rubro": 42,
+            "cad_rubro": "Fecha de vencimiento",
+            "id_tipo_objeto": 4,
+            "cad_tipo": "datetime-local",
+            "num_longitud": 10,
+            "id_tipo_dato": 2,
+            "cad_tipo_dato": "varchar",
+            "id_tipo_validacion": None,
+            "cad_tipo_validacion": None,
+            "b64_rubro": None
+        }
+        return value_3_data
+
+    def get_value4_data(self) -> dict:
+        value_4_data = {
+            "id_doc_probatorio": 142,
+            "id_rubro": 96,
+            "cad_rubro": "País de expedición",
+            "id_tipo_objeto": 10,
+            "cad_tipo": "",
+            "num_longitud": 0,
+            "id_tipo_dato": 3,
+            "cad_tipo_dato": "integer",
+            "id_tipo_validacion": None,  # Note: Fixed typo from original (validacion -> validacion)
+            "cad_tipo_validacion": None,
+            "b64_rubro": None
+        }
+        return value_4_data
+
+    def get_doc_proof(self) -> dict:
+        doc_proof = {
+            "value_1": self.person.identification,
+            "value_1_data": self.get_value1_data(),
+            "value_2": self.person.id_begin_date,
+            "value_2_data": self.get_value2_data(),
+            "value_3": self.person.id_end_date,
+            "value_3_data": self.get_value3_data(),
+            "value_4": "China",
+            "value_4_data": self.get_value4_data()
+        }
+        return doc_proof
+    def get_apmt_persons_documents_real(self) -> dict:
+        person_data = {
+            "doc_complementario_id": None,
+            "doc_complementario_name": None,
+            "doc_probatorio_id": 142,
+            "doc_probatorio_name": "Documento de identidad nacional (DNI)",
+            "doc_nacionalidad_id": None,
+            "doc_nacionalidad_name": None,
+            "modelo_rubros_dinamico_doc_complementario": {},
+            "modelo_rubros_dinamico_doc_probatorio": self.get_doc_proof(),
+            "modelo_rubros_dinamico_doc_nacionalidad": {},
+            "modelo_rubros_dinamico_doc_acta_extemporanea": {}
+        }
+        return person_data
+
+    def get_save_data_request3(self, d2: dict) -> dict:
+        json_data = d2["data"]["json"]
+
+        # Access and modify nested data
+        people_array = json_data["people"]
+        first_person = people_array[0]
+
+        first_person.update({
+            "naturalized": False,
+            "disability": False
+        })
+
+        # Modify formalities data
+        if first_person.get("persons_formalities"):
+            first_person["persons_formalities"][0]["id_tramite"] = self.person.formalities.formalitites_type_id
+
+        # Add additional data
+        first_person.update({
+            "apmt_persons_second_additional": self.get_apmt_persons_second_additional_3(),
+            "apmt_persons_documents": self.get_apmt_persons_documents_real()
+        })
+
+        # Update top-level fields
+        json_data.update({
+            "step": 3,
+            "step_token": json_data["step_token"],
+            "trakingId": self.traking_id,
+            "diffMin": d2["segundos"]
+        })
+
+        return json_data
+
+    def save_data3(self, d2: dict):
+        while True:
+            try:
+                # Prepare request data
+                request_data = self.get_save_data_request3(d2)
+                request_info = Utils.crypto_js_encrypt(json.dumps(request_data), self.key)
+                # Prepare params and headers
+                params = {"encrypt": request_info}
+                headers = self.get_headers_with_auth()
+                # Make POST request
+                response = requests.post(
+                    self.save_data_url,
+                    headers=headers,
+                    json=params,
+                    timeout=10  # Added timeout for safety
+                )
+
+                decrypted_content = Utils.crypto_js_decrypt(response.text, self.key)
+                print(f"{str(datetime.now())} save3_response: {decrypted_content}")
+                if not decrypted_content:
+                    print("save_data3 empty response!")
+                    time.sleep(5)
+                    continue
+
+                response_json = json.loads(decrypted_content)
+                if "error" in response_json and response_json["error"] == "Unauthenticated":
+                    print("账号异常")
+                    return 2
+                if "success" in response_json and response_json["success"]:
+                    return 1
+                print("try save_data3 again")
+                time.sleep(5)
+
+            except Exception as e:
+                print("==save_data_3 error==>")
+                print(str(e))
+                time.sleep(5)
+
+    def get_apmt_persons_data_address_home(self) -> dict:
+        person_data = {
+            "country_id": self.person.from_country.country_id,  # Current country
+            "postal_code": None,
+            "state_id": self.person.from_state.state_id,  # Current state/province
+            "municipality_id": None,
+            "colony_id": None,
+            "direction": self.person.direction,  # Address direction
+            "street": None,
+            "outdoor_number": None,
+            "interior_number": None
+        }
+        return person_data
+
+    def get_apmt_persons_data_address_emergency(self) -> dict:
+        emergency_person = self.person.emergency_person
+
+        person_data = {
+            "name": emergency_person.name,
+            "firstName": emergency_person.first_name,
+            "lastName": "",  # Empty string as specified
+            "email": None,
+            "phone": emergency_person.phone,
+            "cell_phone": None,
+            "sameDirection": True,  # Boolean value
+            "country_id": None,
+            "postal_code": None,
+            "state_id": None,
+            "municipality_id": None,
+            "colony_id": None,
+            "direction": None,
+            "street": None,
+            "outdoor_number": None,
+            "interior_number": None,
+            "cellPhoneFormatInternational": emergency_person.cell_phone_format_international
+        }
+        return person_data
+
+    def get_save_data_request4(self, d3: dict) -> dict:
+        json_data = d3["data"]["json"]
+        people_array = json_data["people"]
+        first_person = people_array[0]
+
+        # Update person data
+        first_person.update({
+            "apmt_persons_data_address_home": self.get_apmt_persons_data_address_home(),
+            "apmt_persons_data_address_emergency": self.get_apmt_persons_data_address_emergency()
+        })
+
+        # Update top-level fields
+        json_data.update({
+            "step": 4,
+            "step_token": json_data["step_token"],
+            "trakingId": self.traking_id,
+            "diffMin": d3["segundos"]
+        })
+
+        return json_data
+
+    def save_data4(self, d3: dict):
+        while True:
+            try:
+                # Prepare request data
+                request_data = self.get_save_data_request4(d3)
+                request_info = Utils.crypto_js_encrypt(json.dumps(request_data), self.key)
+
+                # Prepare request components
+                params = {"encrypt": request_info}
+                headers = self.get_headers_with_auth()
+                # Make POST request with timeout
+                response = requests.post(
+                    self.save_data_url,
+                    headers=headers,
+                    json=params,
+                    timeout=10  # 10 second timeout
+                )
+
+                decrypted_content = Utils.crypto_js_decrypt(response.text, self.key)
+                print(f"{str(datetime.now())} save4_response: {decrypted_content}")
+                if not decrypted_content:
+                    print("save_data4 empty response!")
+                    time.sleep(5)
+                    continue
+
+                response_json = json.loads(decrypted_content)
+                if "error" in response_json and response_json["error"] == "Unauthenticated":
+                    print("账号异常")
+                    return 2
+                if "success" in response_json and response_json["success"]:
+                    return 1
+                print("try save_data4 again")
+                time.sleep(5)
+
+            except Exception as e:
+                print("==save_data_4 error==>")
+                print(str(e))
+                time.sleep(5)
+
+    def get_new_schedule(self, date):
+        new_schedule = {}
+        # new_schedule["id"] = int(date["hash_id"])  # commented out as in original
+        new_schedule["newDateSelected"] = date["date"]
+        new_schedule["newTimeSelected"] = date["initialTime"][:5]
+        new_schedule["newEndTimeSelected"] = date["endTime"][:5]
+        new_schedule["mainProcedureSelected"] = ""
+        new_schedule["fullDate"] = f"{date['date']}T{date['initialTime']}"
+
+        return new_schedule
+
+    def get_save_data_request5(self, d4, date):
+        data = d4["data"]
+        json_data = data["json"]
+
+        json_data["awaitStep"] = False
+        json_data["step"] = 4
+        json_data["step_token"] = json_data["step_token"]
+        json_data["trakingId"] = self.traking_id
+        json_data["diffMin"] = d4["segundos"]
+        json_data["GrecaptchaResponse"] = None  # Using None instead of JSONNull
+        json_data["newSchedule"] = self.get_new_schedule(date)
+        json_data["program"] = True
+
+        return json_data
+
+    def save_data5(self, d4: dict, date: dict):
+        while True:
+            try:
+                # Prepare request data
+                request_data = self.get_save_data_request5(d4, date)
+                request_info = Utils.crypto_js_encrypt(json.dumps(request_data), self.key)
+
+                # Prepare request components
+                params = {"encrypt": request_info}
+                headers = self.get_headers_with_auth()
+                # Make POST request with timeout
+                response = requests.post(
+                    self.save_data_url,
+                    headers=headers,
+                    json=params,
+                    timeout=10  # 10 second timeout
+                )
+
+                decrypted_content = Utils.crypto_js_decrypt(response.text, self.key)
+                print(f"{str(datetime.now())} save5_response: {decrypted_content}")
+                if not decrypted_content:
+                    print("save_data5 empty response!")
+                    time.sleep(5)
+                    continue
+
+                response_json = json.loads(decrypted_content)
+                if "error" in response_json and response_json["error"] == "Unauthenticated":
+                    print("账号异常")
+                    return {}
+                if "success" in response_json and response_json["success"]:
+                    return response_json
+                print("try save_data5 again")
+                time.sleep(5)
+
+            except Exception as e:
+                print("==save_data_5 error==>")
+                print(str(e))
+                time.sleep(5)
+
+    def get_appointment_request(self, d5: dict, date: dict) -> dict:
+        submit_info = {}
+        date_new = {}
+
+        # date_new["id"] = int(date["hash_id"])  # commented out as in original
+        date_new["start"] = date["start"]
+        date_new["end"] = date["end"]
+
+        submit_info["date"] = date_new
+        submit_info["form"] = d5["data"]
+        submit_info["newSchedule"] = self.get_new_schedule(date)
+
+        # Set null values for form fields
+        form = submit_info["form"]
+        null_fields = [
+            "id",
+            "folioAppointment",
+            "dateAppointment",
+            "hourStarAppointment",
+            "hourEndAppointment",
+            "created_by_id",
+            "cat_apmt_type_appointment_id"
+        ]
+
+        for field in null_fields:
+            form[field] = None  # Using None instead of JSONNull
+
+        return submit_info
+
+    def get_pdf_request(self, ticket_id: str, d5: dict) -> dict:
+        pdf_request = {
+            "folio": ticket_id,
+            "form": d5["data"]
+        }
+        return pdf_request
+
+    def get_ticket_pdf_bytes(self, ticket_id: str, d5: dict) -> bytes:
+        while True:
+            try:
+                pdf_request = self.get_pdf_request(ticket_id, d5)
+                request_info = Utils.crypto_js_encrypt(json.dumps(pdf_request), self.key)
+
+                # Prepare request components
+                params = {"encrypt": request_info}
+                headers = self.get_headers_with_auth()
+                # Make POST request with timeout
+                response = requests.post(
+                    self.document_url,
+                    headers=headers,
+                    json=params,
+                    timeout=10  # 10 second timeout
+                )
+                decrypted_content = Utils.crypto_js_decrypt(response.text, self.key)
+                # Parse response and extract PDF bytes
+                response_json = json.loads(decrypted_content)
+                file_str = response_json["file"]
+                pdf_bytes = base64.b64decode(file_str)
+                return pdf_bytes
+            except Exception as e:
+                print(e)
+                time.sleep(5)
+
+    def save_appointment_with_pdf(self, d5: dict, date: dict):
+        while True:
+            try:
+                # Prepare request data
+                request_data = self.get_appointment_request(d5, date)
+                request_info = Utils.crypto_js_encrypt(json.dumps(request_data), self.key)
+
+                # Prepare request components
+                params = {"encrypt": request_info}
+                headers = self.get_headers_with_auth()
+                # Make POST request with timeout
+                response = requests.post(
+                    self.save_appointment_url,
+                    headers=headers,
+                    json=params,
+                    timeout=10  # 10 second timeout
+                )
+
+                decrypted_content = Utils.crypto_js_decrypt(response.text, self.key)
+                print(f"{str(datetime.now())} save_appointment: {decrypted_content}")
+                if not decrypted_content:
+                    print("save_appointment empty response!")
+                    time.sleep(5)
+                    continue
+
+                response_json = json.loads(decrypted_content)
+                if "error" in response_json and response_json["error"] == "Unauthenticated":
+                    print("账号异常")
+                    return 2
+                if "success" in response_json and response_json["success"]:
+                    if "ticket" in response_json and response_json["ticket"]:
+                        # Write to Redis
+                        redis_conn = redis.Redis(host='47.254.14.124', port=6379, db=0, password='2023@mexico')
+                        redis_conn.select(0)
+                        redis_conn.rpush(
+                            self.CUSTOM_TASK_FINISHED_LIST,
+                            f"{str(datetime.now())} {self.user_id} got ticket!"
+                        )
+
+                        # Save PDF
+                        pdf_bytes = self.get_ticket_pdf_bytes(response_json["ticket"], d5)
+                        file_path = (
+                            f"./{self.person.first_name} {self.person.name}_"
+                            f"{response_json['date']}.pdf"
+                        )
+
+                        try:
+                            with open(file_path, "wb") as f:
+                                f.write(pdf_bytes)
+                            print("save pdf success!")
+                        except IOError as e:
+                            print(e)
+
+                        # Send email
+                        self.got_ticket = True
+                        subject = f"{self.person.first_name} {self.person.name}-墨西哥预约抢票成功！"
+                        text = (
+                            f"{self.person.first_name} {self.person.name}\n"
+                            f"{json.dumps(response_json, indent=2, ensure_ascii=False)}\n"
+                        )
+
+                        addr_text = "Got at ip address:"
+                        try:
+                            addr_text += f"{socket.gethostbyname(socket.gethostname())}\n"
+                        except socket.error as e:
+                            print(e)
+
+                        text += (
+                            f"{addr_text}\n"
+                            f"userId: {self.user_id}    password:{self.password}\n"
+                            f"手续类型：{self.person.formalities.formalitites_type_name}\n"
+                        )
+
+                        attachment_name = (
+                            f"{self.person.first_name} {self.person.name}_"
+                            f"{response_json['date']}.pdf"
+                        )
+                        self.send_email_with_attachment(
+                            subject, text, pdf_bytes, attachment_name
+                        )
+                        return True
+
+                    return False
+                print("try save_appointment again")
+                time.sleep(5)
+
+            except Exception as e:
+                print("==save_appointment error==>")
+                print(str(e))
+                time.sleep(5)
+                print("终止")
+                break
+
+    def do_book(self):
+        self.save_data1()
+        start_time = time.time()
+        time.sleep(5)
+        d1 = self.get_process()
+        time.sleep(5)
+
+        self.save_data2(d1)
+        time.sleep(5)
+        d2 = self.get_process()
+        time.sleep(5)
+
+        self.save_data3(d2)
+        time.sleep(5)
+        d3 = self.get_process()
+        time.sleep(5)
+
+        elapsed_time = (time.time()) - start_time
+        if elapsed_time < 60:
+            sleep_time = 60 - elapsed_time
+            print(f"sleep {sleep_time} seconds!")
+            time.sleep(sleep_time)
+
+        self.save_data4(d3)
+        d4 = self.get_process()
+
+        appointment_date = self.get_date()
+        d5 = self.save_data5(d4, appointment_date)
+
+        self.save_appointment_with_pdf(d5, appointment_date)
 
 
 if __name__ == "__main__":
