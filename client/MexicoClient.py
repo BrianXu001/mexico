@@ -926,18 +926,17 @@ class MexicoClient:
                 url = f"{self.office_event_prefix_url}encryptParams={encrypted_params}"
                 response = requests.get(url, headers=self.get_headers_with_auth())
                 response_content = response.content
-                print(f"responseContent:{response_content}")
 
                 if not response_content:
                     print("empty response")
                     return []
 
                 decrypted_content = Utils.crypto_js_decrypt(response_content, self.key)
-                print(f"check response:{decrypted_content}")
+                print(f"event response:{decrypted_content}")
                 response_json = json.loads(decrypted_content)
                 office_events = response_json.get("events", [])
                 events = json.loads(json.dumps(office_events))  # Convert to ensure it's a list
-                print("events:", events)
+
                 if events and events[0] != "null":
                     try:
                         # Convert to list of dicts for sorting
@@ -989,19 +988,18 @@ class MexicoClient:
 
     def get_office_days(self,selected_date, recaptcha_code ):
         request_info = self.gen_office_day_event_request_info_with_recaptcha_code(selected_date, recaptcha_code)
+        print(request_info)
         request_info = Utils.crypto_js_encrypt(request_info, self.key)
         encrypted_params = quote(request_info, encoding="utf-8")
-        url = f"{self.office_event_prefix_url}encryptParams={encrypted_params}"
+        url = f"{self.office_day_event_prefix_url}encryptParams={encrypted_params}"
         response = requests.get(url, headers=self.get_headers_with_auth())
         response_content = response.content
-        print(f"responseContent:{response_content}")
 
         if not response_content:
             print("empty response")
             return []
-
         decrypted_content = Utils.crypto_js_decrypt(response_content, self.key)
-        print(f"check response:{decrypted_content}")
+        print(f"days response:{decrypted_content}")
         response_json = json.loads(decrypted_content)
         return response_json
 
@@ -1076,9 +1074,9 @@ class MexicoClient:
     def get_date(self):
         formalitites_type_name_simple = "sin" if "sin" in self.person.formalities.formalitites_type_name.lower() else "con"
         events = self.get_office_event_with_office_id_and_formalitites_type(self.person.dst_office.cat_office_id, formalitites_type_name_simple)
-
+        print("events:", events)
         if len(events) > 0:
-            days = self.get_days_with_selected_date(events[0])
+            days = self.get_days_with_selected_date(events[0].get("date"))
             if len(days) > 0:
                 date_wrap = self.gen_date_object(days[0])
                 return date_wrap
@@ -1101,6 +1099,7 @@ class MexicoClient:
 
                 response_content = response.text
                 decrypted_content = Utils.crypto_js_decrypt(response_content, self.key)
+                print("get_process:", decrypted_content)
                 response_json = json.loads(decrypted_content)
                 if response_json.get("success", False):
                     return response_json
@@ -1520,7 +1519,7 @@ class MexicoClient:
             "street": None,
             "outdoor_number": None,
             "interior_number": None,
-            "cellPhoneFormatInternational": emergency_person.cell_phone_format_international
+            "cellPhoneFormatInternational": emergency_person.cellphone_format_international
         }
         return person_data
 
@@ -1806,17 +1805,20 @@ class MexicoClient:
 
     def do_book(self):
         self.save_data1()
+        print("save_data1 success!")
         start_time = time.time()
         time.sleep(5)
         d1 = self.get_process()
         time.sleep(5)
 
         self.save_data2(d1)
+        print("save_data2 success!")
         time.sleep(5)
         d2 = self.get_process()
         time.sleep(5)
 
         self.save_data3(d2)
+        print("save_data3 success!")
         time.sleep(5)
         d3 = self.get_process()
         time.sleep(5)
@@ -1828,6 +1830,7 @@ class MexicoClient:
             time.sleep(sleep_time)
 
         self.save_data4(d3)
+        print("save_data4 success!")
         d4 = self.get_process()
 
         appointment_date = self.get_date()

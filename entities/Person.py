@@ -155,7 +155,7 @@ class Person:
         emergency_first_name = person_json.get("emergencyFirstName")
         emergency_phone = person_json.get("emergencyPhone")
         emergency_cellphone_format_international = f"+86 {emergency_phone}"
-        self.emergencyPerson = EmergencyPerson(emergency_name, emergency_first_name, emergency_phone,
+        self.emergency_person = EmergencyPerson(emergency_name, emergency_first_name, emergency_phone,
                                                emergency_cellphone_format_international)
 
         self.start_time = person_json.get("start_time", "0000-00-00")

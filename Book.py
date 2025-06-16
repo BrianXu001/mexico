@@ -81,6 +81,7 @@ class Book:
         ip_address = ""
         try:
             ip_address = socket.gethostbyname(socket.gethostname()) + "\n"
+            print("ip_address:", ip_address)
         except socket.gaierror as e:
             print("Get ip address failed!")
             print(e)
@@ -182,7 +183,7 @@ class Book:
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="输入gmail账号、密码")
     parser.add_argument("arg1", help="specify_time")
-    parser.add_argument("arg2", help="buffer_time/second")
+    parser.add_argument("arg2", type=int, default=0, help="buffer_time/second")
     args = parser.parse_args()
     specify_time = args.arg1
     buffer_time = args.arg2
