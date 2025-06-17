@@ -143,7 +143,7 @@ class Book:
                 #     break
                 # Check visas
                 if (time.time() - begin_time) > (check_account + 1) * (10 * 60):
-                    check_code = client.check_visas_with_auth_by_error_code(client.person.dstOffice.cat_office_id)
+                    check_code = client.check_visas_with_auth_by_error_code(client.person.dst_office.cat_office_id)
                     check_account += 1
                     if check_code == -2:
                         print("The account is blocked, need change!")
