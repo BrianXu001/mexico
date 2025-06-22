@@ -28,7 +28,7 @@ ssl._create_default_https_context = ssl._create_unverified_context
 
 class Register:
     def __init__(self, register_type="check", email_type="hotmail"):
-        self.key = "ca0d02b0df9839e77ae6ad1c1b48654c"
+        self.key = "6603a88c6e6c8c8c0b978ace1c756a70"
         self.register_type = register_type
         self.email_type = email_type
 
@@ -94,6 +94,7 @@ class Register:
             if response.status_code == 200:
                 try:
                     content = response.text
+                    # print("content:", content)
                     decrypted_content = Utils.crypto_js_decrypt(content, self.key)
                     data = json.loads(decrypted_content)
                     img_data = data.get("img", "")[22:]  # Remove the data:image/png;base64, prefix
