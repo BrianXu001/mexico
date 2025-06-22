@@ -15,6 +15,7 @@ import socket
 
 from entities.Country import Country
 from entities.State import State
+from entities.Person import Person
 
 from utils.Utils import Utils
 from utils.Recaptcha import Recaptcha
@@ -36,7 +37,9 @@ class MexicoClient:
         self.check_office_id = -1
         self.got_ticket = False
         self.send_email_count = 0
-        self.key = "ca0d02b0df9839e77ae6ad1c1b48654c"
+        # self.key = "ca0d02b0df9839e77ae6ad1c1b48654c" # _0x4c66df = "ca0d02b0df9839e77ae6ad1c1b48654c"
+        self.key = "6603a88c6e6c8c8c0b978ace1c756a70"
+
 
         if person and person.dst_office:
             self.AVAILABLE_CON_DAY_LIST = f"{person.dst_office.var_cad_oficina}_con_availableDay"
@@ -1715,6 +1718,7 @@ class MexicoClient:
             try:
                 # Prepare request data
                 request_data = self.get_appointment_request(d5, date)
+                print("save_appointment_with_pdf request data:", request_data)
                 request_info = Utils.crypto_js_encrypt(json.dumps(request_data), self.key)
 
                 # Prepare request components
@@ -1803,6 +1807,71 @@ class MexicoClient:
                 print("终止")
                 break
 
+    def construct_date(self, redis_client, person: Person):
+
+        redis_client.select(0)
+
+        tmp_possible_days = []
+        possible_days = []
+
+        while len(possible_days) == 0:
+            # 不需要显式调用 select(0)，因为在连接时已经指定了 db=0
+            if person.formalities.formalitites_type_name == "Sin permiso del INM":
+                tmp_possible_days = redis_client.lrange(self.POSSIBLE_TIME_SIN_LIST, 0, -1)  # -1 表示获取所有元素
+            elif person.formalities.formalitites_type_name == "Con permiso del INM (Validación vía servicio web con el INM)":
+                tmp_possible_days = redis_client.lrange(self.POSSIBLE_TIME_CON_LIST, 0, -1)
+
+            for day in tmp_possible_days:
+                possible_days.append(json.loads(day))
+            if len(possible_days) == 0:
+                print(f"{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}==Can not find available day or possible day!==")
+
+            time.sleep(3)  # 休眠3秒
+
+        return random.choice(possible_days)
+
+    def construct_d5(self, d1, date):
+        data = d1["data"]
+        json_data = data["json"]
+
+        # Modify the json data
+        json_data["awaitStep"] = False
+        json_data["folioProcedureInitial"] = data["folioProcedureInitial"]
+        json_data["selectedForm"] = True
+        json_data["people"][0]["naturalized"] = False
+        json_data["people"][0]["disability"] = False
+        json_data["people"][0]["adoption"] = False
+
+        json_data["people"][0]["persons_formalities"] = self.get_persons_formalities_by_step2()
+        json_data["people"][0]["apmt_persons_select_tmp_formalities"] = self.get_apmt_persons_select_tmp_formalities()
+
+
+        json_data["people"][0]["persons_formalities"][0]["id_tramite"] = self.person.formalities.formalitites_type_id
+
+        # Add additional data
+        json_data["people"][0]["apmt_persons_second_additional"] = self.get_apmt_persons_second_additional_3()
+        json_data["people"][0]["apmt_persons_documents"] = self.get_apmt_persons_documents_real()
+
+        json_data["people"][0]["apmt_persons_data_address_home"] = self.get_apmt_persons_data_address_home()
+        json_data["people"][0]["apmt_persons_data_address_emergency"] = self.get_apmt_persons_data_address_emergency()
+
+
+        json_data["step"] = 4
+        # json_data["step_token"] = json_data["step_token"]
+        json_data["trakingId"] = self.traking_id
+        json_data["diffMin"] = d1["segundos"]
+        json_data["GrecaptchaResponse"] = None
+        json_data["newSchedule"] = self.get_new_schedule(date)
+        json_data["program"] = True
+        json_data["get_extraordinary"] = False
+
+
+        json_data = d1["data"]["json"]
+
+        d5 = {}
+        d5["data"] = json_data
+        return d5
+
     def do_book(self):
         self.save_data1()
         print("save_data1 success!")
@@ -1838,10 +1907,28 @@ class MexicoClient:
 
         self.save_appointment_with_pdf(d5, appointment_date)
 
+    def do_book_directly_appointment(self, appointment_date):
+        self.save_data1()
+        print("save_data1 success!")
+        start_time = time.time()
+        time.sleep(5)
+        d1 = self.get_process()
+        time.sleep(5)
+
+        elapsed_time = (time.time()) - start_time
+        if elapsed_time < 60:
+            sleep_time = 60 - elapsed_time
+            print(f"sleep {sleep_time} seconds!")
+            time.sleep(sleep_time)
+
+        d5 = self.construct_d5(d1, appointment_date)
+        self.save_appointment_with_pdf(d5, appointment_date)
+
 
 if __name__ == "__main__":
+    pass
     # {"email":"ambfvcqhs8@hotmail.com","email_pwd":"mbc599534","password":"mbc5995341@Gmail"}
     # {"email":"aqnfe63@hotmail.com","email_pwd":"kyh478984","password":"kyh4789841@Gmail"}
     # {"email":"exwpchxjho4@hotmail.com","email_pwd":"gsy184641","password":"gsy1846411@Gmail"}
-    client = MexicoClient(user_id="exwpchxjho4@hotmail.com", password="gsy1846411@Gmail")
-    client.login_with_recaptcha_with_error_code()
+    # client = MexicoClient(user_id="exwpchxjho4@hotmail.com", password="gsy1846411@Gmail")
+    # client.login_with_recaptcha_with_error_code()
