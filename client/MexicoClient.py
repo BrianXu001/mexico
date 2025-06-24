@@ -71,6 +71,7 @@ class MexicoClient:
         self.general_url = "https://citasapi.sre.gob.mx/api/console/get-general"
         self.catalog_url = "https://citasapi.sre.gob.mx/api/catalog/v1/get-catalog"
         self.save_data_url = "https://citasapi.sre.gob.mx/api/appointment/v1/save-data"
+        self.get_process_url = "https://citasapi.sre.gob.mx/api/appointment/v1/get-process"
         self.office_event_prefix_url = "https://citasapi.sre.gob.mx/api/console/office-events?"
         self.office_day_event_prefix_url = "https://citasapi.sre.gob.mx/api/console/office-day-events?"
         self.save_appointment_url = "https://citasapi.sre.gob.mx/api/appointment/v1/save-appointment"
@@ -781,10 +782,14 @@ class MexicoClient:
                 params = {
                     "encrypt": request_info
                 }
+
+                headers = self.get_headers_with_auth()
+
                 response = requests.post(
                     self.save_data_url,
-                    headers=self.get_headers_with_auth(),
-                    json=params
+                    headers=headers,
+                    json=params,
+                    timeout=10  # Added timeout for safety
                 )
                 response_content = response.content
                 decrypted_content = Utils.crypto_js_decrypt(response_content, self.key)
@@ -1085,8 +1090,17 @@ class MexicoClient:
                 return date_wrap
         return {}
 
+    def get_date_by_office_id_and_formalitites_type_name(self, office_id, formalitites_type_name):
+        events = self.get_office_event_with_office_id_and_formalitites_type(office_id, formalitites_type_name)
+        print("events:", events)
+        if len(events) > 0:
+            days = self.get_days_with_selected_date(events[0].get("date"))
+            if len(days) > 0:
+                date_wrap = self.gen_date_object(days[0])
+                return date_wrap
+        return {}
+
     def get_process(self):
-        url = "https://citasapi.sre.gob.mx/api/appointment/v1/get-process"
         data = {
             "id": self.traking_id
         }
@@ -1098,8 +1112,16 @@ class MexicoClient:
                 params = {
                     "encrypt": request_info
                 }
-                response = requests.post(url, headers=self.get_headers_with_auth(), json=params)
+                # response = requests.post(url, headers=self.get_headers_with_auth(), json=params)
 
+                headers = self.get_headers_with_auth()
+
+                response = requests.post(
+                    self.get_process_url,
+                    headers=headers,
+                    json=params,
+                    timeout=10  # Added timeout for safety
+                )
                 response_content = response.text
                 decrypted_content = Utils.crypto_js_decrypt(response_content, self.key)
                 print("get_process:", decrypted_content)
@@ -1714,8 +1736,14 @@ class MexicoClient:
                 time.sleep(5)
 
     def save_appointment_with_pdf(self, d5: dict, date: dict):
+        try_count = 0
+        max_count = 5
         while True:
             try:
+                try_count += 1
+                if try_count > max_count:
+                    print("reach max try account!")
+                    break
                 # Prepare request data
                 request_data = self.get_appointment_request(d5, date)
                 print("save_appointment_with_pdf request data:", request_data)
@@ -1804,8 +1832,7 @@ class MexicoClient:
                 print("==save_appointment error==>")
                 print(str(e))
                 time.sleep(5)
-                print("终止")
-                break
+                # break
 
     def construct_date(self, redis_client, person: Person):
 
@@ -1872,7 +1899,7 @@ class MexicoClient:
         d5["data"] = json_data
         return d5
 
-    def do_book(self):
+    def do_book(self, redis_client):
         self.save_data1()
         print("save_data1 success!")
         start_time = time.time()
@@ -1902,17 +1929,61 @@ class MexicoClient:
         print("save_data4 success!")
         d4 = self.get_process()
 
-        appointment_date = self.get_date()
-        d5 = self.save_data5(d4, appointment_date)
+        tmp_possible_days = []
+        # 不需要显式调用 select(0)，因为在连接时已经指定了 db=0
+        if self.person.formalities.formalitites_type_name == "Sin permiso del INM":
+            tmp_possible_days = redis_client.lrange(self.POSSIBLE_TIME_SIN_LIST, 0, -1)  # -1 表示获取所有元素
+        elif self.person.formalities.formalitites_type_name == "Con permiso del INM (Validación vía servicio web con el INM)":
+            tmp_possible_days = redis_client.lrange(self.POSSIBLE_TIME_CON_LIST, 0, -1)
+        appointment_date = ""
+        if (len(tmp_possible_days) > 0):
+            appointment_date = random.choice(tmp_possible_days)
+            appointment_date = json.loads(appointment_date)
+            appointment_date = self.gen_date_object(appointment_date)
+            print("find appointment_date:", appointment_date)
+        else:
+            print("can not find ", self.POSSIBLE_TIME_SIN_LIST)
 
+        if appointment_date == "":
+            appointment_date = self.get_date()
+
+        d5 = self.save_data5(d4, appointment_date)
         self.save_appointment_with_pdf(d5, appointment_date)
 
-    def do_book_directly_appointment(self, appointment_date):
+    def construct_allos_d5(self, d5, client_real):
+        data = d5["data"]
+
+        data.update({"country_id": client_real.person.dst_country.country_id})
+        data.update({"country_data": client_real.get_country_data()})
+        data.update({"state_id": client_real.person.dst_state.state_id})
+        data.update({"state_data": client_real.get_state_data()})
+        data.update({"cat_office_id": client_real.person.dst_office.cat_office_id})
+        data.update({"cat_office_data": client_real.get_office_data_new()})
+
+        # data.update({"officeConfigData": client_real.get_office_config_data1(client_real.person.dst_office.cat_office_id)})
+        # data.update({"setTempFormalitiesConsole": client_real.get_set_temp_formalities_console()})
+
+        return d5
+
+
+    def do_book_allos(self, appointment_date, client_real):
         self.save_data1()
         print("save_data1 success!")
         start_time = time.time()
         time.sleep(5)
         d1 = self.get_process()
+        time.sleep(5)
+
+        self.save_data2(d1)
+        print("save_data2 success!")
+        time.sleep(5)
+        d2 = self.get_process()
+        time.sleep(5)
+
+        self.save_data3(d2)
+        print("save_data3 success!")
+        time.sleep(5)
+        d3 = self.get_process()
         time.sleep(5)
 
         elapsed_time = (time.time()) - start_time
@@ -1921,7 +1992,68 @@ class MexicoClient:
             print(f"sleep {sleep_time} seconds!")
             time.sleep(sleep_time)
 
+        self.save_data4(d3)
+        print("save_data4 success!")
+        d4 = self.get_process()
+        time.sleep(5)
+
+        d5 = self.save_data5(d4, appointment_date)
+        d5 = self.construct_allos_d5(d5, client_real)
+        print("construct_allos_d5:", d5)
+        self.save_appointment_with_pdf(d5, appointment_date)
+
+    def check_date(self, office_id, formalitites_type_name):
+        self.save_data1()
+        print("save_data1 success!")
+        start_time = time.time()
+        time.sleep(5)
+        d1 = self.get_process()
+        time.sleep(5)
+
+        self.save_data2(d1)
+        print("save_data2 success!")
+        time.sleep(5)
+        d2 = self.get_process()
+        time.sleep(5)
+
+        self.save_data3(d2)
+        print("save_data3 success!")
+        time.sleep(5)
+        d3 = self.get_process()
+        time.sleep(5)
+
+        elapsed_time = (time.time()) - start_time
+        if elapsed_time < 60:
+            sleep_time = 60 - elapsed_time
+            print(f"sleep {sleep_time} seconds!")
+            time.sleep(sleep_time)
+
+        self.save_data4(d3)
+        print("save_data4 success!")
+        d4 = self.get_process()
+
+        appointment_date = self.get_date_by_office_id_and_formalitites_type_name(office_id, formalitites_type_name)
+        print("appointment_date:", appointment_date)
+
+
+    def do_book_directly_appointment(self, appointment_date):
+        print("start time1:", datetime.now())
+        self.save_data1()
+        print("save_data1 success!")
+        start_time = time.time()
+        print("start time2:", datetime.now())
+        time.sleep(5)
+        d1 = self.get_process()
+        time.sleep(5)
+
+        elapsed_time = (time.time()) - start_time
+        if elapsed_time < 90:
+            sleep_time = 90 - elapsed_time
+            print(f"sleep {sleep_time} seconds!")
+            time.sleep(sleep_time)
+
         d5 = self.construct_d5(d1, appointment_date)
+        print("d5:", d5)
         self.save_appointment_with_pdf(d5, appointment_date)
 
 

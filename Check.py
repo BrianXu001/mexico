@@ -83,8 +83,8 @@ class Check:
             redis_conn.rpush(register_request_signal, "1")
 
             account_info = json.loads(registered_account)
-            email = account_info["email"]
-            email_pwd = account_info.get("email_pwd", "")
+            email = account_info["email"].lower()
+            # email_pwd = account_info.get("email_pwd", "")
             password = account_info["password"]
 
             client = MexicoClient(email, password, self.person)
