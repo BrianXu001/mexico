@@ -56,7 +56,7 @@ class Register:
         self.redis_registered_account_list += "_registered_account"
 
         print("check_citas_homepage")
-        self.check_citas_homepage()
+        # self.check_citas_homepage()
 
     def generate_recaptcha_url(self, user_name: str) -> str:
         try:

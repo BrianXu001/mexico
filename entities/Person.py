@@ -179,7 +179,7 @@ class Person:
         # # GUANGZHOU:246, BEIJING: 59, AUSTRIA:223, CANBERRA:74, RIO DE JANEIRO: 144, SHANGHAI: 164,
         print("__init_from_office_id:", str(office_id))
         if office_id == 246:
-            self.dstS_state = State("Guangzhou")
+            self.dst_state = State("Guangzhou")
             self.dst_office = Office("GUANGZHOU")
             self.dst_country = Country("China")
         elif office_id == 59:
