@@ -28,7 +28,7 @@ class Book:
     def __init__(self):
 
         print("check_citas_homepage")
-        self.check_citas_homepage()
+        # self.check_citas_homepage()
 
     def check_citas_homepage(self):
         chrome_options = Options()
@@ -440,13 +440,15 @@ class Book:
                 #     time.sleep(3)
                 #     continue
                 # start book
-                office_id = 74
+                office_id = 246
+                formalitites_type_name = "sin"
+                client.check_date(office_id, formalitites_type_name)
+
+                office_id = 246
                 formalitites_type_name = "con"
                 client.check_date(office_id, formalitites_type_name)
 
-                office_id = 144
-                formalitites_type_name = "con"
-                client.check_date(office_id, formalitites_type_name)
+
                 break
 
             break
